@@ -1,21 +1,67 @@
 // components/LiveChat.js
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import analyzeImage from '../libs/visionClient';
 
 export default function LiveChat({ onMessage }) {
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSupported, setIsSupported] = useState(true);
+  const isMounted = useRef(true);
 
-  useEffect(() => {
-    startLiveVideo();
-    return stopLiveVideo;
+  // Use useCallback to prevent function recreation on each render
+  const startLiveVideo = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setIsSupported(false);
+        return;
+      }
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      if (isMounted.current) {
+        setStream(mediaStream);
+        setIsRunning(true);
+      } else {
+        // Clean up if component unmounted during async call
+        mediaStream.getTracks().forEach((track) => track.stop());
+      }
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      if (isMounted.current) {
+        setIsSupported(false);
+      }
+    }
   }, []);
 
+  const stopLiveVideo = useCallback(() => {
+    setIsRunning(false);
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+  }, [stream]);
+
+  // Component mount/unmount effect
+  useEffect(() => {
+    isMounted.current = true;
+    startLiveVideo();
+    
+    // Cleanup function
+    return () => {
+      isMounted.current = false;
+      stopLiveVideo();
+    };
+  }, [startLiveVideo, stopLiveVideo]);
+
+  // Video analysis effect with proper dependencies
   useEffect(() => {
     let interval;
-    if (isRunning && videoRef.current) {
+    
+    if (isRunning && videoRef.current && stream) {
       interval = setInterval(async () => {
+        if (!isMounted.current) return;
+        
         const canvas = document.createElement('canvas');
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -25,7 +71,7 @@ export default function LiveChat({ onMessage }) {
 
         try {
           const analysis = await analyzeImage(dataURL);
-          if (onMessage) {
+          if (isMounted.current && onMessage) {
             onMessage({ role: 'assistant', content: analysis });
           }
         } catch (err) {
@@ -33,30 +79,27 @@ export default function LiveChat({ onMessage }) {
         }
       }, 2000); // every 2 seconds
     }
-    return () => clearInterval(interval);
-  }, [isRunning]);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRunning, stream, onMessage]);
 
-  const startLiveVideo = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setStream(mediaStream);
-      setIsRunning(true);
-    } catch (err) {
-      console.error('Camera access denied:', err);
-    }
-  };
-
-  const stopLiveVideo = () => {
-    setIsRunning(false);
-    stream?.getTracks().forEach((track) => track.stop());
-    setStream(null);
-  };
-
+  // Connect video element to stream
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
+
+  if (!isSupported) {
+    return (
+      <div className="bg-yellow-100 p-4 rounded-xl shadow-md text-yellow-800">
+        <p className="text-center">Camera access is not supported in your browser.</p>
+        <p className="text-center text-sm mt-2">Try using Chrome, Firefox or Edge.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-black p-2 rounded-xl shadow-md text-white">
