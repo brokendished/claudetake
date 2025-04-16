@@ -373,8 +373,6 @@ export default function ChatbotChat() {
           ...assistantMsg,
           timestamp: serverTimestamp()
         });
-      } else if (session?.user?.email && isMounted.current) {
-        await saveFinalQuote();
       }
       
       if (live && isMounted.current) speak(data.reply);
