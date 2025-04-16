@@ -52,22 +52,25 @@ export default function ChatbotChat() {
   const quoteRef = useRef(null);
   const { data: session } = useSession();
 
-  // Session ID management with localStorage
-  const sessionId = useRef(() => {
-    if (typeof window === 'undefined') return uuidv4();
-    
-    try {
+const sessionId = useRef(null);
+
+// Add this useEffect right after your other useEffects
+useEffect(() => {
+  if (!sessionId.current) {
+    if (typeof window === 'undefined') {
+      sessionId.current = uuidv4();
+    } else {
       const existingId = localStorage.getItem('current_session_id');
-      if (existingId) return existingId;
-      
-      const newId = uuidv4();
-      localStorage.setItem('current_session_id', newId);
-      return newId;
-    } catch (err) {
-      console.error('LocalStorage error:', err);
-      return uuidv4();
+      if (existingId) {
+        sessionId.current = existingId;
+      } else {
+        const newId = uuidv4();
+        localStorage.setItem('current_session_id', newId);
+        sessionId.current = newId;
+      }
     }
-  });
+  }
+}, []);
 
   // Speech recognition hook with browser support check
   const { listening, isSupported: speechSupported, error: speechError } = useSpeechRecognition({
@@ -645,9 +648,8 @@ export default function ChatbotChat() {
     setLive(false);
   }, [stopStream]);
 
-// Improved saveFinalQuote function for ChatbotChat.js
 const saveFinalQuote = useCallback(async () => {
-  if (!session?.user?.email) {
+  if (!session?.user?.email || !isMounted.current) {
     setError('You need to be logged in to save quotes');
     return;
   }
@@ -656,72 +658,50 @@ const saveFinalQuote = useCallback(async () => {
     setLoading(true);
     console.log("Starting quote save process...");
     
-    // Use a simple fallback in case summarizeQuote fails
+    // Make sure sessionId is a string, not a function
+    if (!sessionId.current) {
+      console.error("No session ID available");
+      throw new Error("Session ID is not available");
+    }
+    
     let summary = '';
     try {
       summary = await summarizeQuote(messages);
     } catch (summaryError) {
       console.error("Summary generation failed:", summaryError);
-      // Create a simple summary from the last user message
       const lastUserMsg = messages.filter(m => m.role === 'user').pop();
       summary = lastUserMsg ? lastUserMsg.content : 'Quote request';
     }
     
+    const quoteData = {
+      sessionId: sessionId.current, // Use the string value, not the function
+      timestamp: serverTimestamp(),
+      name: session?.user?.name || '',
+      email: session?.user?.email || '',
+      images: imageURLs,
+      issue: summary,
+      contractorId: contractorId.current,
+    };
+    
     if (quoteRef.current) {
       // Update existing quote
-      console.log("Updating existing quote:", quoteRef.current.id);
-      await setDoc(quoteRef.current, {
-        sessionId: sessionId.current,
-        timestamp: serverTimestamp(),
-        name: session?.user?.name || '',
-        email: session?.user?.email || '',
-        images: imageURLs,
-        issue: summary,
-        contractorId: contractorId.current,
-      }, { merge: true });
+      await setDoc(quoteRef.current, quoteData, { merge: true });
     } else {
-      // Create new quote - simpler approach first
-      console.log("Creating new quote...");
-      
-      // First create the quote document
-      const quoteData = {
-        sessionId: sessionId.current,
-        timestamp: serverTimestamp(),
-        name: session?.user?.name || '',
-        email: session?.user?.email || '',
-        images: imageURLs,
-        issue: summary,
-        contractorId: contractorId.current,
-      };
-      
+      // Create new quote
       const docRef = await addDoc(collection(db, 'quotes'), quoteData);
-      console.log("Quote created with ID:", docRef.id);
-      
-      // Set the reference
       quoteRef.current = docRef;
       
-      // Then add messages one by one, with error handling
-      console.log("Adding messages to subcollection...");
-      try {
-        const messagesCollectionRef = collection(db, 'quotes', docRef.id, 'messages');
-        for (const msg of messages) {
-          await addDoc(messagesCollectionRef, {
-            ...msg,
-            timestamp: serverTimestamp()
-          });
-        }
-        console.log("Messages added successfully");
-      } catch (messageError) {
-        console.error("Error adding messages:", messageError);
-        // Continue since the main quote is already saved
+      // Add messages to subcollection
+      for (const msg of messages) {
+        await addDoc(collection(db, 'quotes', docRef.id, 'messages'), {
+          ...msg,
+          timestamp: serverTimestamp()
+        });
       }
     }
     
     if (isMounted.current) {
       setQuoteSaved(true);
-      console.log("Quote saved successfully");
-      
-      // Add a confirmation message
       setMessages(prev => [
         ...prev,
         {
@@ -741,6 +721,8 @@ const saveFinalQuote = useCallback(async () => {
     }
   }
 }, [messages, session, imageURLs]);
+
+  
 
   // Switch camera between front and back (mobile only)
   const switchCamera = useCallback(() => {
