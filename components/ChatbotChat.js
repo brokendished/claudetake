@@ -21,6 +21,7 @@ const MAX_MESSAGES_STORAGE = 50; // Limit stored messages to prevent localStorag
 const MAX_IMAGES_STORAGE = 5;    // Limit stored image references
 
 export default function ChatbotChat() {
+  // State management
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,41 +34,126 @@ export default function ChatbotChat() {
   const [quoteSaved, setQuoteSaved] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [error, setError] = useState(null);
+  const [loadingStates, setLoadingStates] = useState({
+    sendingMessage: false,
+    analyzingImage: false,
+    savingQuote: false
+  });
 
+  // Refs and router
   const router = useRouter();
   const quoteIdFromURL = router.query.quoteId;
   const contractorId = useRef(router.query.ref || null);
-
-  // Use localStorage for session ID to maintain consistency across page refreshes
-  const sessionId = useRef(() => {
-    if (typeof window === 'undefined') return uuidv4();
-    
-    const existingId = localStorage.getItem('current_session_id');
-    if (existingId) return existingId;
-    
-    const newId = uuidv4();
-    localStorage.setItem('current_session_id', newId);
-    return newId;
-  });
-  
-  const quoteRef = useRef(null);
-  const lastAskedRef = useRef('');
   const chatRef = useRef(null);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const isMounted = useRef(true);
+  const lastAskedRef = useRef('');
+  const quoteRef = useRef(null);
   const { data: session } = useSession();
+
+  // Session ID management with localStorage
+  const sessionId = useRef(() => {
+    if (typeof window === 'undefined') return uuidv4();
+    
+    try {
+      const existingId = localStorage.getItem('current_session_id');
+      if (existingId) return existingId;
+      
+      const newId = uuidv4();
+      localStorage.setItem('current_session_id', newId);
+      return newId;
+    } catch (err) {
+      console.error('LocalStorage error:', err);
+      return uuidv4();
+    }
+  });
 
   // Speech recognition hook with browser support check
   const { listening, isSupported: speechSupported, error: speechError } = useSpeechRecognition({
     enabled: live,
     onResult: (text) => {
-      if (text) {
+      if (text && isMounted.current) {
         sendMessage(text);
         setIsWaitingForResponse(false);
       }
     },
   });
+
+  // Media stream management utility
+  const useMediaStreamCleanup = () => {
+    const activeStreamRef = useRef(null);
+
+    const startStream = useCallback(async (constraints) => {
+      try {
+        // First clean up any existing stream
+        if (activeStreamRef.current) {
+          activeStreamRef.current.getTracks().forEach(track => track.stop());
+        }
+        
+        // Get new stream
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        activeStreamRef.current = newStream;
+        return newStream;
+      } catch (err) {
+        console.error('Error accessing media devices:', err);
+        throw err;
+      }
+    }, []);
+
+    const stopStream = useCallback(() => {
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach(track => track.stop());
+        activeStreamRef.current = null;
+      }
+    }, []);
+
+    // Ensure cleanup on component unmount
+    useEffect(() => {
+      return () => {
+        stopStream();
+      };
+    }, [stopStream]);
+
+    return { startStream, stopStream };
+  };
+
+  const { startStream, stopStream } = useMediaStreamCleanup();
+
+  // Safe localStorage utility
+  const safelyStoreData = useCallback((key, data) => {
+    try {
+      const serialized = JSON.stringify(data);
+      // Check size before attempting to store
+      if (serialized.length > 1000000) { // ~1MB limit
+        const reducedData = {
+          ...data,
+          messages: data.messages.slice(-20),
+          imageURLs: data.imageURLs.slice(-2)
+        };
+        localStorage.setItem(key, JSON.stringify(reducedData));
+        return false; // Indicate reduction happened
+      }
+      localStorage.setItem(key, serialized);
+      return true;
+    } catch (err) {
+      console.error('Storage error:', err);
+      // If quota exceeded, try removing older items
+      if (err.name === 'QuotaExceededError') {
+        try {
+          localStorage.removeItem(key);
+          const reducedData = {
+            messages: data.messages.slice(-10),
+            imageURLs: data.imageURLs.slice(-1)
+          };
+          localStorage.setItem(key, JSON.stringify(reducedData));
+        } catch (retryErr) {
+          console.error('Retry storage failed:', retryErr);
+        }
+      }
+      return false;
+    }
+  }, []);
 
   // Initialize messages from existing quote or localStorage
   useEffect(() => {
@@ -79,7 +165,9 @@ export default function ChatbotChat() {
           
           if (docSnap.exists()) {
             quoteRef.current = docRef;
-            setImageURLs(docSnap.data().images || []);
+            if (isMounted.current) {
+              setImageURLs(docSnap.data().images || []);
+            }
             
             // Subscribe to messages collection
             const unsub = onSnapshot(
@@ -100,13 +188,17 @@ export default function ChatbotChat() {
               },
               (error) => {
                 console.error('Error loading messages:', error);
-                setError('Failed to load chat history');
+                if (isMounted.current) {
+                  setError('Failed to load chat history');
+                }
               }
             );
             
             return () => unsub();
           } else {
-            setError(`Quote ID ${quoteIdFromURL} not found`);
+            if (isMounted.current) {
+              setError(`Quote ID ${quoteIdFromURL} not found`);
+            }
           }
         } else {
           // Try to load from localStorage
@@ -114,10 +206,26 @@ export default function ChatbotChat() {
             const stored = localStorage.getItem(`chat_${sessionId.current}`);
             if (stored) {
               const parsed = JSON.parse(stored);
-              setMessages(parsed.messages || []);
-              setImageURLs(parsed.imageURLs || []);
+              if (isMounted.current) {
+                setMessages(parsed.messages || []);
+                setImageURLs(parsed.imageURLs || []);
+              }
             } else {
               // Start with welcome message
+              if (isMounted.current) {
+                setMessages([
+                  {
+                    role: 'assistant',
+                    content: `Hi, I'm here to help understand your project! Describe the issue, snap a photo, or go live.`,
+                    suggestions: ['Plumbing', 'AC', 'Broken Appliance'],
+                  },
+                ]);
+              }
+            }
+          } catch (storageError) {
+            console.error('LocalStorage error:', storageError);
+            // Reset to welcome message on storage error
+            if (isMounted.current) {
               setMessages([
                 {
                   role: 'assistant',
@@ -126,21 +234,13 @@ export default function ChatbotChat() {
                 },
               ]);
             }
-          } catch (storageError) {
-            console.error('LocalStorage error:', storageError);
-            // Reset to welcome message on storage error
-            setMessages([
-              {
-                role: 'assistant',
-                content: `Hi, I'm here to help understand your project! Describe the issue, snap a photo, or go live.`,
-                suggestions: ['Plumbing', 'AC', 'Broken Appliance'],
-              },
-            ]);
           }
         }
       } catch (err) {
         console.error('Error loading initial data:', err);
-        setError('Failed to load initial data');
+        if (isMounted.current) {
+          setError('Failed to load initial data');
+        }
       }
     };
     
@@ -156,36 +256,13 @@ export default function ChatbotChat() {
 
   // Save to localStorage if not using Firestore
   useEffect(() => {
-    if (!quoteRef.current && typeof window !== 'undefined') {
-      try {
-        // Only store limited number of messages and images to prevent storage issues
-        localStorage.setItem(
-          `chat_${sessionId.current}`,
-          JSON.stringify({ 
-            messages: messages.slice(-MAX_MESSAGES_STORAGE), 
-            imageURLs: imageURLs.slice(-MAX_IMAGES_STORAGE) 
-          })
-        );
-      } catch (err) {
-        console.error('LocalStorage save error:', err);
-        // If quota exceeded, try removing older items
-        if (err.name === 'QuotaExceededError') {
-          try {
-            localStorage.removeItem(`chat_${sessionId.current}`);
-            localStorage.setItem(
-              `chat_${sessionId.current}`,
-              JSON.stringify({ 
-                messages: messages.slice(-20), // Store even fewer messages
-                imageURLs: imageURLs.slice(-2)  // Store fewer images
-              })
-            );
-          } catch (retryErr) {
-            console.error('Retry storage failed:', retryErr);
-          }
-        }
-      }
+    if (!quoteRef.current && typeof window !== 'undefined' && isMounted.current) {
+      safelyStoreData(`chat_${sessionId.current}`, { 
+        messages: messages.slice(-MAX_MESSAGES_STORAGE), 
+        imageURLs: imageURLs.slice(-MAX_IMAGES_STORAGE) 
+      });
     }
-  }, [messages, imageURLs]);
+  }, [messages, imageURLs, safelyStoreData]);
 
   // Connect video stream to video element when stream changes
   useEffect(() => {
@@ -199,7 +276,10 @@ export default function ChatbotChat() {
     let interval;
     if (autoCapture && live && stream) {
       interval = setInterval(() => {
-        if (!isWaitingForResponse && Date.now() - lastQuestionTime > 10000) {
+        if (!isWaitingForResponse && 
+            Date.now() - lastQuestionTime > 10000 && 
+            stream.active && 
+            isMounted.current) {
           captureAndAnalyze();
         }
       }, 2000);
@@ -217,22 +297,44 @@ export default function ChatbotChat() {
     // Cleanup function
     return () => {
       isMounted.current = false;
-      
-      // Stop all media streams
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      // Stop media streams will be handled by the media stream cleanup utility
     };
   }, []);
 
+  // Helper function to compress images before upload
+  const compressImage = useCallback((dataURL, maxWidth = 1200) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          const ratio = maxWidth / width;
+          width = maxWidth;
+          height = height * ratio;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = dataURL;
+    });
+  }, []);
+
   // Send a text message
-  const sendMessage = async (text) => {
-    if (!text.trim()) return;
+  const sendMessage = useCallback(async (text) => {
+    if (!text.trim() || !isMounted.current) return;
     
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setLoading(true);
+    setLoadingStates(prev => ({...prev, sendingMessage: true}));
     
     try {
       const res = await fetch('/api/chatbot_chat', {
@@ -245,6 +347,8 @@ export default function ChatbotChat() {
           email: session?.user?.email || '',
           image: imageURLs[imageURLs.length - 1] || '',
         }),
+        // Add timeout signal
+        signal: AbortSignal.timeout(15000),
       });
       
       if (!res.ok) {
@@ -260,7 +364,7 @@ export default function ChatbotChat() {
       }
       
       // Save message to Firestore if we have a quote reference
-      if (quoteRef.current) {
+      if (quoteRef.current && isMounted.current) {
         await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
           ...userMsg,
           timestamp: serverTimestamp()
@@ -269,11 +373,11 @@ export default function ChatbotChat() {
           ...assistantMsg,
           timestamp: serverTimestamp()
         });
-      } else if (session?.user?.email) {
+      } else if (session?.user?.email && isMounted.current) {
         await saveFinalQuote();
       }
       
-      if (live) speak(data.reply);
+      if (live && isMounted.current) speak(data.reply);
     } catch (err) {
       console.error('Chatbot error:', err);
       if (isMounted.current) {
@@ -287,23 +391,18 @@ export default function ChatbotChat() {
       }
     } finally {
       if (isMounted.current) {
-        setLoading(false);
+        setLoadingStates(prev => ({...prev, sendingMessage: false}));
       }
     }
-  };
+  }, [messages, session, imageURLs, live]);
 
   // Capture and analyze image from live video
-  const captureAndAnalyze = async () => {
-    if (!videoRef.current || isWaitingForResponse || !stream) return;
-    
-    // Check if stream is active
-    if (!stream.active) {
-      console.error('Video stream is not active');
-      return;
-    }
+  const captureAndAnalyze = useCallback(async () => {
+    if (!videoRef.current || isWaitingForResponse || !stream || !stream.active || !isMounted.current) return;
 
     try {
       setIsWaitingForResponse(true);
+      setLoadingStates(prev => ({...prev, analyzingImage: true}));
       
       // Create canvas and capture image
       const canvas = document.createElement('canvas');
@@ -311,7 +410,10 @@ export default function ChatbotChat() {
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataURL = canvas.toDataURL('image/png');
+      const rawDataURL = canvas.toDataURL('image/png');
+      
+      // Compress image before upload
+      const dataURL = await compressImage(rawDataURL);
 
       // Upload to Firebase
       const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
@@ -359,7 +461,7 @@ export default function ChatbotChat() {
           });
         }
         
-        if (live) speak(reply);
+        if (live && isMounted.current) speak(reply);
         lastAskedRef.current = reply;
       }
 
@@ -380,18 +482,24 @@ export default function ChatbotChat() {
     } finally {
       if (isMounted.current) {
         setIsWaitingForResponse(false);
+        setLoadingStates(prev => ({...prev, analyzingImage: false}));
       }
     }
-  };
+  }, [compressImage, live, stream, isWaitingForResponse]);
 
   // Handle uploaded photo
-  const takeScreenshot = async (dataURL) => {
+  const takeScreenshot = useCallback(async (dataURL) => {
+    if (!isMounted.current) return;
+    
     try {
-      setLoading(true);
+      setLoadingStates(prev => ({...prev, analyzingImage: true}));
+      
+      // Compress image before upload
+      const compressedDataURL = await compressImage(dataURL);
       
       // Upload to Firebase
       const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
-      await uploadString(imageRef, dataURL, 'data_url');
+      await uploadString(imageRef, compressedDataURL, 'data_url');
       const url = await getDownloadURL(imageRef);
       
       if (isMounted.current) {
@@ -418,7 +526,7 @@ export default function ChatbotChat() {
       const res = await fetch('/api/analyze-screenshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataURL }),
+        body: JSON.stringify({ image: compressedDataURL }),
         signal: AbortSignal.timeout(15000),
       });
 
@@ -442,7 +550,7 @@ export default function ChatbotChat() {
         });
       }
       
-      speak(reply);
+      if (isMounted.current) speak(reply);
     } catch (err) {
       console.error('Image analysis failed:', err);
       if (isMounted.current) {
@@ -456,15 +564,15 @@ export default function ChatbotChat() {
       }
     } finally {
       if (isMounted.current) {
-        setLoading(false);
+        setLoadingStates(prev => ({...prev, analyzingImage: false}));
       }
     }
-  };
+  }, [compressImage]);
 
   // Handle file upload from input
-  const handleImportPhoto = (e) => {
+  const handleImportPhoto = useCallback((e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !isMounted.current) return;
     
     // Check file size
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -480,18 +588,22 @@ export default function ChatbotChat() {
     
     const reader = new FileReader();
     reader.onload = async (event) => {
-      if (event.target?.result) {
+      if (event.target?.result && isMounted.current) {
         await takeScreenshot(event.target.result);
       }
     };
     reader.onerror = () => {
-      setError('Failed to read the file. Please try another image.');
+      if (isMounted.current) {
+        setError('Failed to read the file. Please try another image.');
+      }
     };
     reader.readAsDataURL(file);
-  };
+  }, [takeScreenshot]);
 
   // Start live video chat
-  const startLiveChat = async () => {
+  const startLiveChat = useCallback(async () => {
+    if (!isMounted.current) return;
+    
     setLive(true);
     setAutoCapture(true);
     speak('OK, lets take a look!');
@@ -501,16 +613,13 @@ export default function ChatbotChat() {
         throw new Error('Media devices not supported in this browser');
       }
       
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const mediaStream = await startStream({
         video: { facingMode },
         audio: true,
       });
       
       if (isMounted.current) {
         setStream(mediaStream);
-      } else {
-        // Clean up if component unmounted during async call
-        mediaStream.getTracks().forEach(track => track.stop());
       }
     } catch (err) {
       console.error('Camera access failed:', err);
@@ -526,26 +635,28 @@ export default function ChatbotChat() {
         setAutoCapture(false);
       }
     }
-  };
+  }, [facingMode, startStream]);
 
   // Stop live video chat
   const stopLiveChat = useCallback(() => {
+    if (!isMounted.current) return;
+    
     setAutoCapture(false);
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
+    stopStream();
+    setStream(null);
     setLive(false);
-  }, [stream]);
+  }, [stopStream]);
 
   // Save quote to Firestore
-  const saveFinalQuote = async () => {
-    if (!session?.user?.email) {
+  const saveFinalQuote = useCallback(async () => {
+    if (!session?.user?.email || !isMounted.current) {
       setError('You need to be logged in to save quotes');
       return;
     }
     
     try {
+      setLoadingStates(prev => ({...prev, savingQuote: true}));
+      
       const summary = await summarizeQuote(messages);
       
       if (quoteRef.current) {
@@ -570,49 +681,55 @@ export default function ChatbotChat() {
           issue: summary,
           contractorId: contractorId.current,
         });
-        quoteRef.current = docRef;
         
-        // Add all existing messages to the messages subcollection
-        for (const msg of messages) {
-          await addDoc(collection(db, 'quotes', docRef.id, 'messages'), {
-            ...msg,
-            timestamp: serverTimestamp()
-          });
+        if (isMounted.current) {
+          quoteRef.current = docRef;
+          
+          // Add all existing messages to the messages subcollection
+          for (const msg of messages) {
+            await addDoc(collection(db, 'quotes', docRef.id, 'messages'), {
+              ...msg,
+              timestamp: serverTimestamp()
+            });
+          }
         }
       }
       
-      setQuoteSaved(true);
+      if (isMounted.current) {
+        setQuoteSaved(true);
+      }
     } catch (error) {
       console.error('Failed to save quote:', error);
-      setError('Failed to save your quote. Please try again.');
+      if (isMounted.current) {
+        setError('Failed to save your quote. Please try again.');
+      }
+    } finally {
+      if (isMounted.current) {
+        setLoadingStates(prev => ({...prev, savingQuote: false}));
+      }
     }
-  };
+  }, [messages, session, imageURLs]);
 
   // Switch camera between front and back (mobile only)
   const switchCamera = useCallback(() => {
-    if (stream) {
-      // Stop current stream
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-      
-      // Toggle facing mode
-      setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-      
-      // Restart with new facing mode
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facingMode === 'environment' ? 'user' : 'environment' },
-        audio: true,
-      }).then(newStream => {
-        if (isMounted.current) {
-          setStream(newStream);
-        } else {
-          newStream.getTracks().forEach(track => track.stop());
-        }
-      }).catch(err => {
-        console.error('Failed to switch camera:', err);
-      });
-    }
-  }, [stream, facingMode]);
+    if (!stream || !isMounted.current) return;
+    
+    // Toggle facing mode
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+    
+    // Restart with new facing mode
+    stopStream();
+    startStream({
+      video: { facingMode: facingMode === 'environment' ? 'user' : 'environment' },
+      audio: true,
+    }).then(newStream => {
+      if (isMounted.current) {
+        setStream(newStream);
+      }
+    }).catch(err => {
+      console.error('Failed to switch camera:', err);
+    });
+  }, [stream, facingMode, startStream, stopStream]);
 
   // Render error state
   if (error) {
@@ -685,9 +802,9 @@ export default function ChatbotChat() {
               <button
                 onClick={() => captureAndAnalyze()}
                 className="flex-1 py-1 bg-white text-black rounded-md text-sm"
-                disabled={isWaitingForResponse}
+                disabled={isWaitingForResponse || loadingStates.analyzingImage}
               >
-                {isWaitingForResponse ? '⏳ Processing...' : '📸 Snap'}
+                {isWaitingForResponse || loadingStates.analyzingImage ? '⏳ Processing...' : '📸 Snap'}
               </button>
               <button
                 onClick={switchCamera}
@@ -711,16 +828,16 @@ export default function ChatbotChat() {
             placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !loading && sendMessage(input)}
+            onKeyPress={(e) => e.key === 'Enter' && !loadingStates.sendingMessage && sendMessage(input)}
             className="flex-1 outline-none px-4 text-sm"
-            disabled={loading}
+            disabled={loadingStates.sendingMessage}
           />
           <button
             onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
+            disabled={loadingStates.sendingMessage || !input.trim()}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition disabled:bg-blue-300"
           >
-            {loading ? '⏳ Sending...' : 'Send'}
+            {loadingStates.sendingMessage ? '⏳ Sending...' : 'Send'}
           </button>
         </div>
 
@@ -747,9 +864,9 @@ export default function ChatbotChat() {
               <button
                 onClick={saveFinalQuote}
                 className="text-sm bg-green-600 text-white rounded-full px-3 py-1 shadow hover:bg-green-700"
-                disabled={quoteSaved}
+                disabled={quoteSaved || loadingStates.savingQuote}
               >
-                {quoteSaved ? '✓ Saved' : '💾 Save Quote'}
+                {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
               </button>
             )}
             <input
