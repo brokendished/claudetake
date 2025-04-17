@@ -658,7 +658,7 @@ const saveFinalQuote = useCallback(async () => {
   try {
     setLoadingStates(prev => ({...prev, savingQuote: true}));
     
-    // 1. Get Firebase Auth User (using our custom integration)
+    // 1. Get Firebase Auth User
     const { getAuth } = await import('firebase/auth');
     const auth = getAuth();
     const currentUser = auth.currentUser;
@@ -666,7 +666,8 @@ const saveFinalQuote = useCallback(async () => {
     // If not signed in to Firebase but have NextAuth session, try to sync
     if (!currentUser) {
       try {
-        console.log("Syncing NextAuth session with Firebase...");
+        console.log("Attempting to sync NextAuth session with Firebase...");
+        // Dynamically import to avoid build errors
         const { syncNextAuthWithFirebase } = await import('../libs/firebaseAuth');
         await syncNextAuthWithFirebase(session);
         
