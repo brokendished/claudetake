@@ -657,31 +657,36 @@ const saveFinalQuote = useCallback(async () => {
   
   try {
     setLoading(true);
-    console.log("Starting quote save process...");
     
-    // Make sure sessionId is a string, not a function
+    // Make sure we have the session ID as a string
     if (!sessionId.current) {
-      console.error("No session ID available");
-      throw new Error("Session ID is not available");
+      const newId = uuidv4();
+      sessionId.current = newId;
+      localStorage.setItem('current_session_id', newId);
     }
     
+    // Generate summary (with fallback)
     let summary = '';
     try {
       summary = await summarizeQuote(messages);
-    } catch (summaryError) {
-      console.error("Summary generation failed:", summaryError);
-      const lastUserMsg = messages.filter(m => m.role === 'user').pop();
-      summary = lastUserMsg ? lastUserMsg.content : 'Quote request';
+    } catch (error) {
+      // If summary fails, use first user message
+      const userMessages = messages.filter(m => m.role === 'user');
+      summary = userMessages.length > 0 
+        ? userMessages[0].content 
+        : 'Quote request';
     }
     
+    // Prepare quote data
     const quoteData = {
-      sessionId: sessionId.current, // Use the string value, not the function
+      sessionId: sessionId.current,
       timestamp: serverTimestamp(),
-      name: session?.user?.name || '',
-      email: session?.user?.email || '',
+      name: session.user.name || '',
+      email: session.user.email, // Make sure this matches your auth email exactly
       images: imageURLs,
       issue: summary,
       contractorId: contractorId.current,
+      created: new Date().toISOString()
     };
     
     if (quoteRef.current) {
@@ -692,17 +697,37 @@ const saveFinalQuote = useCallback(async () => {
       const docRef = await addDoc(collection(db, 'quotes'), quoteData);
       quoteRef.current = docRef;
       
-      // Add messages to subcollection
+      // Save messages separately to avoid nested writes
+      const messagesCollection = collection(db, 'quotes', docRef.id, 'messages');
+      
+      // Add messages in batches to be more efficient
+      const messageBatch = writeBatch(db);
+      let count = 0;
+      
       for (const msg of messages) {
-        await addDoc(collection(db, 'quotes', docRef.id, 'messages'), {
+        const msgData = {
           ...msg,
           timestamp: serverTimestamp()
-        });
+        };
+        const msgRef = doc(messagesCollection);
+        messageBatch.set(msgRef, msgData);
+        
+        count++;
+        if (count >= 500) {
+          // Firestore batch has a limit of 500 operations
+          await messageBatch.commit();
+          count = 0;
+        }
+      }
+      
+      if (count > 0) {
+        await messageBatch.commit();
       }
     }
     
     if (isMounted.current) {
       setQuoteSaved(true);
+      // Show success message
       setMessages(prev => [
         ...prev,
         {
@@ -722,7 +747,6 @@ const saveFinalQuote = useCallback(async () => {
     }
   }
 }, [messages, session, imageURLs]);
-
   
 
   // Switch camera between front and back (mobile only)
