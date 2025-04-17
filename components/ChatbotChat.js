@@ -656,7 +656,7 @@ const saveFinalQuote = useCallback(async () => {
   }
   
   try {
-    setLoading(true);
+    setLoadingStates(prev => ({...prev, savingQuote: true}));
     
     // Make sure we have the session ID as a string
     if (!sessionId.current) {
@@ -678,52 +678,67 @@ const saveFinalQuote = useCallback(async () => {
     }
     
     // Prepare quote data
-   console.log("🛠 Saving quote with email:", session?.user?.email);
+    console.log("🛠 Saving quote with email:", session?.user?.email);
 
-const quoteData = {
-  sessionId: sessionId.current,
-  timestamp: serverTimestamp(),
-  name: session?.user?.name || '',
-  email: session?.user?.email, // <-- this MUST match Firebase auth
-  images: imageURLs,
-  issue: summary,
-  contractorId: contractorId.current,
-  created: new Date().toISOString()
-};
+    const quoteData = {
+      sessionId: sessionId.current,
+      timestamp: serverTimestamp(),
+      name: session?.user?.name || '',
+      email: session?.user?.email || '', // Ensure email exists and matches auth
+      images: imageURLs,
+      issue: summary,
+      contractorId: contractorId.current,
+      created: new Date().toISOString(),
+      status: 'Pending' // Add default status
+    };
     
     if (quoteRef.current) {
       // Update existing quote
       await setDoc(quoteRef.current, quoteData, { merge: true });
+      console.log("Updated existing quote:", quoteRef.current.id);
     } else {
-      // Create new quote
-      const docRef = await addDoc(collection(db, 'quotes'), quoteData);
-      quoteRef.current = docRef;
+      // Create new quote document with explicit ID to avoid permission issues
+      const quotesCollection = collection(db, 'quotes');
+      const newQuoteId = uuidv4(); // Generate a predictable ID
+      const newQuoteRef = doc(quotesCollection, newQuoteId);
       
-      // Save messages separately to avoid nested writes
-      const messagesCollection = collection(db, 'quotes', docRef.id, 'messages');
+      // First, create the quote document
+      await setDoc(newQuoteRef, quoteData);
       
-      // Add messages in batches to be more efficient
-      const messageBatch = writeBatch(db);
-      let count = 0;
+      quoteRef.current = newQuoteRef;
+      console.log("Created new quote:", newQuoteRef.id);
       
-      for (const msg of messages) {
-        const msgData = {
-          ...msg,
-          timestamp: serverTimestamp()
-        };
-        const msgRef = doc(messagesCollection);
-        messageBatch.set(msgRef, msgData);
+      // Then save messages in batches
+      if (messages.length > 0) {
+        const messagesCollection = collection(db, 'quotes', newQuoteRef.id, 'messages');
         
-        count++;
-        if (count >= 500) {
-          // Firestore batch has a limit of 500 operations
-          await messageBatch.commit();
-          count = 0;
+        // Use multiple batches if needed (Firestore has a 500 operation limit per batch)
+        let currentBatch = writeBatch(db);
+        let operationCount = 0;
+        
+        for (const msg of messages) {
+          if (operationCount >= 450) { // Leave buffer for batch limit
+            await currentBatch.commit();
+            currentBatch = writeBatch(db);
+            operationCount = 0;
+            console.log("Committed batch and started new one");
+          }
+          
+          const msgData = {
+            ...msg,
+            timestamp: serverTimestamp()
+          };
+          
+          const msgRef = doc(messagesCollection);
+          currentBatch.set(msgRef, msgData);
+          operationCount++;
         }
-      }
-      
-      if (count > 0) {
-        await messageBatch.commit();
+        
+        // Commit any remaining operations
+        if (operationCount > 0) {
+          await currentBatch.commit();
+          console.log("Committed final batch with", operationCount, "operations");
+        }
       }
     }
     
@@ -734,18 +749,32 @@ const quoteData = {
         ...prev,
         {
           role: 'assistant',
-          content: 'Your quote has been saved successfully!'
+          content: 'Your quote has been saved successfully! You can view it in your dashboard.'
         }
       ]);
     }
   } catch (error) {
     console.error('Failed to save quote:', error);
     if (isMounted.current) {
-      setError('Failed to save your quote: ' + (error.message || 'Unknown error'));
+      // More descriptive error message
+      const errorMessage = error.code 
+        ? `Firebase error (${error.code}): ${error.message}` 
+        : `Error: ${error.message || 'Unknown error'}`;
+      
+      setError('Failed to save your quote: ' + errorMessage);
+      
+      // Add error message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I couldn't save your quote. Error: ${errorMessage}`
+        }
+      ]);
     }
   } finally {
     if (isMounted.current) {
-      setLoading(false);
+      setLoadingStates(prev => ({...prev, savingQuote: false}));
     }
   }
 }, [messages, session, imageURLs]);
