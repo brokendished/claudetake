@@ -678,16 +678,18 @@ const saveFinalQuote = useCallback(async () => {
     }
     
     // Prepare quote data
-    const quoteData = {
-      sessionId: sessionId.current,
-      timestamp: serverTimestamp(),
-      name: session.user.name || '',
-      email: session.user.email, // Make sure this matches your auth email exactly
-      images: imageURLs,
-      issue: summary,
-      contractorId: contractorId.current,
-      created: new Date().toISOString()
-    };
+   console.log("🛠 Saving quote with email:", session?.user?.email);
+
+const quoteData = {
+  sessionId: sessionId.current,
+  timestamp: serverTimestamp(),
+  name: session?.user?.name || '',
+  email: session?.user?.email, // <-- this MUST match Firebase auth
+  images: imageURLs,
+  issue: summary,
+  contractorId: contractorId.current,
+  created: new Date().toISOString()
+};
     
     if (quoteRef.current) {
       // Update existing quote
