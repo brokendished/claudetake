@@ -640,7 +640,10 @@ const submitQuote = useCallback(async () => {
       setLoadingStates(prev => ({...prev, submittingQuote: false}));
     }
   }
-}, [messages, session, imageURLs, saveFinalQuote, isMounted]);
+}, [messages, session, imageURLs, isMounted]);
+
+  
+
 
 
 
