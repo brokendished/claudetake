@@ -1104,4 +1104,5 @@ const saveFinalQuote = useCallback(async () => {
       onChange={handleImportPhoto}
     />
   </div>
-)}
+  );
+}
