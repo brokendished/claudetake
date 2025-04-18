@@ -127,7 +127,7 @@ useEffect(() => {
 
   const { startStream, stopStream } = useMediaStreamCleanup();
 
-onst submitQuote = useCallback(async () => {
+const submitQuote = useCallback(async () => {
   if (!session?.user?.email || !isMounted.current) {
     setError('You need to be logged in to submit quotes');
     return;
