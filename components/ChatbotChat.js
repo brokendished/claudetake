@@ -36,9 +36,11 @@ export default function ChatbotChat() {
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [error, setError] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
-    sendingMessage: false,
-    analyzingImage: false,
-    savingQuote: false
+  sendingMessage: false,
+  analyzingImage: false,
+  savingQuote: false,
+  resetting: false,
+  submittingQuote: false
   });
 
   // Refs and router
