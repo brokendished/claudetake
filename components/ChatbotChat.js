@@ -496,7 +496,8 @@ useEffect(() => {
     }
   }, [compressImage, live, stream, isWaitingForResponse]);
 
-  const resetQuote = useCallback(() => {
+  // Add this after the saveFinalQuote function (around line 635)
+const resetQuote = useCallback(() => {
   if (!isMounted.current) return;
   
   setLoadingStates(prev => ({...prev, resetting: true}));
@@ -549,53 +550,6 @@ useEffect(() => {
     setLoadingStates(prev => ({...prev, resetting: false}));
   }
 }, []);
-      // Analyze image
-      const res = await fetch('/api/analyze-screenshot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: compressedDataURL }),
-        signal: AbortSignal.timeout(15000),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Image analysis failed: ${res.status}`);
-      }
-
-      const data = await res.json();
-      const reply = data.summary || 'No image data found.';
-      const assistantMsg = { role: 'assistant', content: reply };
-      
-      if (isMounted.current) {
-        setMessages(prev => [...prev, assistantMsg]);
-      }
-      
-      // Save assistant message to Firestore if we have a quote reference
-      if (quoteRef.current) {
-        await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
-          ...assistantMsg,
-          timestamp: serverTimestamp()
-        });
-      }
-      
-      if (isMounted.current) speak(reply);
-    } catch (err) {
-      console.error('Image analysis failed:', err);
-      if (isMounted.current) {
-        setMessages(prev => [
-          ...prev, 
-          { 
-            role: 'assistant', 
-            content: 'Sorry, I had trouble analyzing that image. Can you describe what you see instead?' 
-          }
-        ]);
-      }
-    } finally {
-      if (isMounted.current) {
-        setLoadingStates(prev => ({...prev, analyzingImage: false}));
-      }
-    }
-  }, [compressImage]);
-
 
 const submitQuote = useCallback(async () => {
   if (!session?.user?.email || !isMounted.current) {
