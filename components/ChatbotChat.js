@@ -596,8 +596,6 @@ const submitQuote = useCallback(async () => {
   
 
 
-
-
   
   // Handle uploaded photo
   const takeScreenshot = useCallback(async (dataURL) => {
@@ -632,7 +630,7 @@ const submitQuote = useCallback(async () => {
           ...userMsg,
           timestamp: serverTimestamp()
         });
-      }
+    
 
   // Handle file upload from input
   const handleImportPhoto = useCallback((e) => {
