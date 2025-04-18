@@ -551,7 +551,59 @@ const submitQuote = useCallback(async () => {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.message || `Error: ${res.status}`);
     }
+    const resetQuote = useCallback(() => {
+  if (!isMounted.current) return;
+  
+  setLoadingStates(prev => ({...prev, resetting: true}));
+  
+  try {
+    // Clear messages except for the initial welcome message
+    setMessages([
+      {
+        role: 'assistant',
+        content: `Hi, I'm here to help understand your project! Describe the issue, snap a photo, or go live.`,
+        suggestions: ['Plumbing', 'AC', 'Broken Appliance'],
+      },
+    ]);
     
+    // Clear images
+    setImageURLs([]);
+    
+    // Reset state variables
+    setQuoteSaved(false);
+    setInput('');
+    setError(null);
+    
+    // Clear local storage for this session
+    try {
+      localStorage.removeItem(`chat_${sessionId.current}`);
+    } catch (err) {
+      console.error('Failed to clear localStorage:', err);
+    }
+    
+    // Generate new session ID
+    const newId = uuidv4();
+    sessionId.current = newId;
+    localStorage.setItem('current_session_id', newId);
+    
+    // Reset quote reference
+    quoteRef.current = null;
+    
+    // Add confirmation message
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: 'Your quote has been reset. You can start a new quote now.'
+      }
+    ]);
+  } catch (error) {
+    console.error('Failed to reset quote:', error);
+    setError('Failed to reset quote: ' + (error.message || 'Unknown error'));
+  } finally {
+    setLoadingStates(prev => ({...prev, resetting: false}));
+  }
+}, []);
     // Update quote status in Firestore
     await updateDoc(quoteRef.current, {
       status: 'Submitted',
