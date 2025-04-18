@@ -630,7 +630,9 @@ const submitQuote = useCallback(async () => {
           ...userMsg,
           timestamp: serverTimestamp()
         });
-    
+    }
+    }
+  }, [compressImage]);
 
   // Handle file upload from input
   const handleImportPhoto = useCallback((e) => {
