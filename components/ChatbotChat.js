@@ -10,7 +10,8 @@ import {
   doc,
   getDoc,
   setDoc,
-  writeBatch // Add this import
+  writeBatch,
+  updateDoc // Add this import
 } from 'firebase/firestore';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import { useSession } from 'next-auth/react';
