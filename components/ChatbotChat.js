@@ -127,101 +127,6 @@ useEffect(() => {
 
   const { startStream, stopStream } = useMediaStreamCleanup();
 
-const submitQuote = useCallback(async () => {
-  if (!session?.user?.email || !isMounted.current) {
-    setError('You need to be logged in to submit quotes');
-    return;
-  }
-  
-  try {
-    setLoadingStates(prev => ({...prev, submittingQuote: true}));
-    
-    // Make sure we have a saved quote first
-    if (!quoteRef.current) {
-      // Save the quote if it hasn't been saved yet
-      await saveFinalQuote();
-      if (!quoteRef.current) {
-        throw new Error("Failed to save the quote first");
-      }
-    }
-    
-    // Generate summary for the email
-    let summary = '';
-    try {
-      summary = await summarizeQuote(messages);
-    } catch (error) {
-      // Fallback to first user message
-      const userMessages = messages.filter(m => m.role === 'user');
-      summary = userMessages.length > 0 
-        ? userMessages[0].content 
-        : 'Quote request';
-    }
-    
-    // Collect user information
-    const userInfo = {
-      name: session?.user?.name || '',
-      email: session?.user?.email || '',
-      quoteId: quoteRef.current.id,
-      summary: summary,
-      timestamp: new Date().toISOString(),
-      imageCount: imageURLs.length
-    };
-    
-    // Send the quote submission to our API
-    const res = await fetch('/api/submit-quote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userInfo,
-        imageURLs: imageURLs.slice(0, 3), // Send up to 3 images to avoid large payloads
-        quoteId: quoteRef.current.id
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error: ${res.status}`);
-    }
-    
-    // Update quote status in Firestore
-    await updateDoc(quoteRef.current, {
-      status: 'Submitted',
-      submittedAt: serverTimestamp()
-    });
-    
-    // Show success message
-    if (isMounted.current) {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Your quote has been submitted! A confirmation email has been sent to you, and the contractor will contact you soon.'
-        }
-      ]);
-    }
-  } catch (error) {
-    console.error('Failed to submit quote:', error);
-    
-    if (isMounted.current) {
-      setError('Failed to submit quote: ' + (error.message || 'Unknown error'));
-      
-      // Add error message to chat
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `I couldn't submit your quote. Error: ${error.message || 'Unknown error'}. Please try again later.`
-        }
-      ]);
-    }
-  } finally {
-    if (isMounted.current) {
-      setLoadingStates(prev => ({...prev, submittingQuote: false}));
-    }
-  }
-}, [messages, session, imageURLs, saveFinalQuote, isMounted]);
-
 
   
   // Safe localStorage utility
@@ -589,6 +494,105 @@ const submitQuote = useCallback(async () => {
     }
   }, [compressImage, live, stream, isWaitingForResponse]);
 
+
+const submitQuote = useCallback(async () => {
+  if (!session?.user?.email || !isMounted.current) {
+    setError('You need to be logged in to submit quotes');
+    return;
+  }
+  
+  try {
+    setLoadingStates(prev => ({...prev, submittingQuote: true}));
+    
+    // Make sure we have a saved quote first
+    if (!quoteRef.current) {
+      // Save the quote if it hasn't been saved yet
+      await saveFinalQuote();
+      if (!quoteRef.current) {
+        throw new Error("Failed to save the quote first");
+      }
+    }
+    
+    // Generate summary for the email
+    let summary = '';
+    try {
+      summary = await summarizeQuote(messages);
+    } catch (error) {
+      // Fallback to first user message
+      const userMessages = messages.filter(m => m.role === 'user');
+      summary = userMessages.length > 0 
+        ? userMessages[0].content 
+        : 'Quote request';
+    }
+    
+    // Collect user information
+    const userInfo = {
+      name: session?.user?.name || '',
+      email: session?.user?.email || '',
+      quoteId: quoteRef.current.id,
+      summary: summary,
+      timestamp: new Date().toISOString(),
+      imageCount: imageURLs.length
+    };
+    
+    // Send the quote submission to our API
+    const res = await fetch('/api/submit-quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userInfo,
+        imageURLs: imageURLs.slice(0, 3), // Send up to 3 images to avoid large payloads
+        quoteId: quoteRef.current.id
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error: ${res.status}`);
+    }
+    
+    // Update quote status in Firestore
+    await updateDoc(quoteRef.current, {
+      status: 'Submitted',
+      submittedAt: serverTimestamp()
+    });
+    
+    // Show success message
+    if (isMounted.current) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Your quote has been submitted! A confirmation email has been sent to you, and the contractor will contact you soon.'
+        }
+      ]);
+    }
+  } catch (error) {
+    console.error('Failed to submit quote:', error);
+    
+    if (isMounted.current) {
+      setError('Failed to submit quote: ' + (error.message || 'Unknown error'));
+      
+      // Add error message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I couldn't submit your quote. Error: ${error.message || 'Unknown error'}. Please try again later.`
+        }
+      ]);
+    }
+  } finally {
+    if (isMounted.current) {
+      setLoadingStates(prev => ({...prev, submittingQuote: false}));
+    }
+  }
+}, [messages, session, imageURLs, saveFinalQuote, isMounted]);
+
+
+
+  
   // Handle uploaded photo
   const takeScreenshot = useCallback(async (dataURL) => {
     if (!isMounted.current) return;
