@@ -1069,40 +1069,43 @@ const saveFinalQuote = useCallback(async () => {
       onClick={() => fileInputRef.current?.click()}
       className="text-sm bg-black text-white rounded-full px-3 py-1 shadow hover:bg-gray-800"
     >
-      📷 Add Photo
-    </button>
-    {session?.user?.email && !quoteRef.current && (
-      <button
-        onClick={saveFinalQuote}
-        className="text-sm bg-green-600 text-white rounded-full px-3 py-1 shadow hover:bg-green-700"
-        disabled={quoteSaved || loadingStates.savingQuote}
-      >
-        {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
-      </button>
-    )}
-    {session?.user?.email && (
-      <button
-        onClick={submitQuote}
-        className="text-sm bg-blue-600 text-white rounded-full px-3 py-1 shadow hover:bg-blue-700"
-        disabled={loadingStates.submittingQuote || (!quoteRef.current && loadingStates.savingQuote)}
-      >
-        {loadingStates.submittingQuote ? '⏳ Submitting...' : '📤 Submit Quote'}
-      </button>
-    )}
-    <button
-      onClick={resetQuote}
-      className="text-sm bg-red-500 text-white rounded-full px-3 py-1 shadow hover:bg-red-600"
-      disabled={loadingStates.resetting}
-    >
-      {loadingStates.resetting ? '🕒 Resetting...' : '🗑️ Reset Quote'}
-    </button>
-    <input
-      type="file"
-      accept="image/*"
-      hidden
-      ref={fileInputRef}
-      onChange={handleImportPhoto}
-    />
+     📷 Add Photo
+          </button>
+          {session?.user?.email && !quoteRef.current && (
+            <button
+              onClick={saveFinalQuote}
+              className="text-sm bg-green-600 text-white rounded-full px-3 py-1 shadow hover:bg-green-700"
+              disabled={quoteSaved || loadingStates.savingQuote}
+            >
+              {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
+            </button>
+          )}
+          {session?.user?.email && (
+            <button
+              onClick={submitQuote}
+              className="text-sm bg-blue-600 text-white rounded-full px-3 py-1 shadow hover:bg-blue-700"
+              disabled={loadingStates.submittingQuote || (!quoteRef.current && loadingStates.savingQuote)}
+            >
+              {loadingStates.submittingQuote ? '⏳ Submitting...' : '📤 Submit Quote'}
+            </button>
+          )}
+          <button
+            onClick={resetQuote}
+            className="text-sm bg-red-500 text-white rounded-full px-3 py-1 shadow hover:bg-red-600"
+            disabled={loadingStates.resetting}
+          >
+            {loadingStates.resetting ? '🕒 Resetting...' : '🗑️ Reset Quote'}
+          </button>
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            ref={fileInputRef}
+            onChange={handleImportPhoto}
+          />
+        </div>
+      )}
+    </div>
   </div>
-  );
+);
 }
