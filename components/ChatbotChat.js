@@ -1052,13 +1052,6 @@ const saveFinalQuote = useCallback(async () => {
               {loadingStates.submittingQuote ? '⏳ Submitting...' : '📤 Submit Quote'}
             </button>
           )}
-          <button
-            onClick={resetQuote}
-            className="text-sm bg-red-500 text-white rounded-full px-3 py-1 shadow hover:bg-red-600"
-            disabled={loadingStates.resetting}
-          >
-            {loadingStates.resetting ? '🕒 Resetting...' : '🗑️ Reset Quote'}
-          </button>
           <input
             type="file"
             accept="image/*"
