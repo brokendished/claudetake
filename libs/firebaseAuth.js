@@ -13,7 +13,7 @@ export async function syncNextAuthWithFirebase(session) {
   }
 
   try {
-    const response = await fetch('/api/auth/firebase-token', {
+    const response = await fetch('/api/firebase-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
