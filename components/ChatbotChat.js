@@ -631,7 +631,7 @@ const submitQuote = useCallback(async () => {
           timestamp: serverTimestamp()
         });
     }
-    }
+    
   }, [compressImage]);
 
   // Handle file upload from input
