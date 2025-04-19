@@ -598,41 +598,42 @@ const submitQuote = useCallback(async () => {
 
   
   // Handle uploaded photo
-  const takeScreenshot = useCallback(async (dataURL) => {
-    if (!isMounted.current) return;
-    
-    try {
-      setLoadingStates(prev => ({...prev, analyzingImage: true}));
-      
-      // Compress image before upload
-      const compressedDataURL = await compressImage(dataURL);
-      
-      // Upload to Firebase
-      const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
-      await uploadString(imageRef, compressedDataURL, 'data_url');
-      const url = await getDownloadURL(imageRef);
-      
-      if (isMounted.current) {
-        setImageURLs(prev => [...prev, url]);
-      } else {
-        return; // Component unmounted
-      }
+const takeScreenshot = useCallback(async (dataURL) => {
+  if (!isMounted.current) return;
 
-      const userMsg = { role: 'user', content: '[📸 Snapshot taken]', image: url };
-      
-      if (isMounted.current) {
-        setMessages(prev => [...prev, userMsg]);
-      }
+  try {
+    setLoadingStates(prev => ({ ...prev, analyzingImage: true }));
 
-      // Save to Firestore if we have a quote reference
-      if (quoteRef.current) {
-        await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
-          ...userMsg,
-          timestamp: serverTimestamp()
-        });
+    const compressedDataURL = await compressImage(dataURL);
+    const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
+    await uploadString(imageRef, compressedDataURL, 'data_url');
+    const url = await getDownloadURL(imageRef);
+
+    if (isMounted.current) {
+      setImageURLs(prev => [...prev, url]);
+    } else {
+      return;
     }
-    
-  }, [compressImage]);
+
+    const userMsg = { role: 'user', content: '[📸 Snapshot taken]', image: url };
+
+    if (isMounted.current) {
+      setMessages(prev => [...prev, userMsg]);
+    }
+
+    if (quoteRef.current) {
+      await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
+        ...userMsg,
+        timestamp: serverTimestamp()
+      });
+    }
+  } catch (err) {
+    console.error('Failed to take screenshot:', err);
+    setError('Something went wrong when processing your photo.');
+  } finally {
+    setLoadingStates(prev => ({ ...prev, analyzingImage: false }));
+  }
+}, [compressImage]);
 
   // Handle file upload from input
   const handleImportPhoto = useCallback((e) => {
