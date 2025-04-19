@@ -1,6 +1,6 @@
 // This API endpoint will generate a Firebase custom token
 import { getAuth } from 'firebase-admin/auth';
-import { initAdmin } from '../../../libs/firebaseAdmin';
+import { initAdmin } from '../../libs/firebaseAdmin';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 initAdmin();
