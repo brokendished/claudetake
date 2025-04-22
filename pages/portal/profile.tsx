@@ -1,3 +1,11 @@
+import { useSession, signIn } from "next-auth/react";
+export default function Page() {
+  const { data: session } = useSession({ required: true, onUnauthenticated: ()=> signIn() });
+  if (!session) return null;
+  // now you can use session.firebaseToken
+
+
+
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 
@@ -35,4 +43,5 @@ export default function Profile() {
       <button onClick={save}>Save</button>
     </div>
   );
+}
 }
