@@ -2,7 +2,6 @@
 
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { FirestoreAdapter } from "@auth/firebase-adapter";
 import admin from "firebase-admin";
 
 // 1) Initialize Firebase Admin if it isn’t already
@@ -25,9 +24,6 @@ export default NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
-
-  // 3) Persist users & sessions in Firestore
-  adapter: FirestoreAdapter(admin.firestore()),
 
   // 4) Keep your secret
   secret: process.env.NEXTAUTH_SECRET,
