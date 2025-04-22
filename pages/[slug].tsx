@@ -1,3 +1,12 @@
+
+ import { useSession, signIn } from "next-auth/react";
+export default function Page() {
+  const { data: session } = useSession({ required: true, onUnauthenticated: ()=> signIn() });
+  if (!session) return null;
+  // now you can use session.firebaseToken
+
+
+
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import admin from "firebase-admin";
@@ -27,4 +36,5 @@ export default function PublicQuote() {
       <button>Submit</button>
     </form>
   );
+}
 }
