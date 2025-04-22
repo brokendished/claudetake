@@ -1,28 +1,45 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import admin from "firebase-admin";
+// pages/api/contractor/profile.js
 
-// init admin if needed (same as in [...nextauth])
-if (!admin.apps.length) {
-  admin.initializeApp({ /* ... */ });
-}
-const db = admin.firestore();
-const auth = admin.auth();
+import { initAdmin } from '../../../libs/firebaseAdmin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // 1) Verify Firebase auth token
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) return res.status(401).end("Missing token");
-  const { uid } = await auth.verifyIdToken(token);
+initAdmin();                     // ensure the Admin SDK is initialized
+const db = getFirestore();       // Firestore client
+const auth = getAuth();          // Auth client
 
-  const ref = db.collection("contractors").doc(uid);
-  if (req.method === "GET") {
+export default async function handler(req, res) {
+  // 1) Extract & verify the Firebase token from the Authorization header
+  const header = req.headers.authorization || '';
+  const token = header.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'Missing auth token' });
+  }
+
+  let uid;
+  try {
+    const decoded = await auth.verifyIdToken(token);
+    uid = decoded.uid;
+  } catch (e) {
+    return res.status(401).json({ error: 'Invalid auth token' });
+  }
+
+  // 2) Reference to this contractor’s doc
+  const ref = db.collection('contractors').doc(uid);
+
+  if (req.method === 'GET') {
+    // Return existing settings
     const snap = await ref.get();
-    return res.json(snap.data() || {});
-  } else if (req.method === "POST") {
+    return res.status(200).json(snap.exists ? snap.data() : {});
+  }
+
+  if (req.method === 'POST') {
+    // Merge in whatever they’ve sent (profile, delivery, slug, etc.)
     await ref.set(req.body, { merge: true });
     return res.status(204).end();
-  } else {
-    res.setHeader("Allow", ["GET","POST"]);
-    return res.status(405).end();
   }
+
+  // 3) Method not allowed
+  res.setHeader('Allow', ['GET', 'POST']);
+  return res.status(405).end();
 }
