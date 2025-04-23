@@ -1,82 +1,64 @@
 // pages/[slug].js
 
-import { useState, useEffect } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useState } from 'react'
+import { auth } from '../libs/firebaseClient'
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
 
 export default function PublicQuote({ contractor }) {
-  const { data: session } = useSession()
   const [form, setForm] = useState({ name: '', email: '', description: '' })
   const [submitted, setSubmitted] = useState(false)
-
-  // If signed in, prefill name/email
-  useEffect(() => {
-    if (session?.user) {
-      setForm(f => ({
-        ...f,
-        name: session.user.name || f.name,
-        email: session.user.email || f.email,
-      }))
-    }
-  }, [session])
+  const [quoteId, setQuoteId] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const headers = { 'Content-Type': 'application/json' }
-    if (session?.firebaseToken) {
-      headers['Authorization'] = `Bearer ${session.firebaseToken}`
-    }
-    await fetch(`/api/contractor/${contractor.uid}/quotes`, {
+
+    // 1) Grab the consumer’s Firebase ID token
+    const idToken = await auth.currentUser.getIdToken()
+
+    // 2) Send form + token to your API
+    const res = await fetch(`/api/contractor/${contractor.uid}/quotes`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+      },
       body: JSON.stringify(form),
     })
+    const { id } = await res.json()
+
+    setQuoteId(id)
     setSubmitted(true)
   }
 
   if (submitted) {
     return (
       <div className="p-4 max-w-md mx-auto">
-        <p className="text-lg">
-          {contractor.thankYouMessage || 'Thanks! We’ll be in touch.'}
+        <h2 className="text-xl font-bold mb-2">Thank you, {form.name}!</h2>
+        <p>
+          Your quote request <strong>#{quoteId}</strong> has been sent to{' '}
+          <strong>{contractor.businessName}</strong>.
         </p>
-        {session && (
-          <button
-            onClick={() => signOut()}
-            className="mt-4 text-sm text-blue-600"
-          >
-            Sign out ({session.user.email})
-          </button>
-        )}
+        <dl className="mt-4 space-y-2">
+          <div>
+            <dt className="font-medium">Email</dt>
+            <dd>{form.email}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Description</dt>
+            <dd>{form.description}</dd>
+          </div>
+        </dl>
       </div>
     )
   }
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      {session ? (
-        <div className="mb-4 text-sm">
-          Signed in as <strong>{session.user.email}</strong>.{' '}
-          <button onClick={() => signOut()} className="underline">
-            Sign out
-          </button>
-        </div>
-      ) : (
-        <div className="mb-4 text-sm">
-          <button
-            onClick={() => signIn('google')}
-            className="underline text-blue-600"
-          >
-            Sign in with Google
-          </button>{' '}
-          or continue as guest.
-        </div>
-      )}
-
-      <h1 className="text-xl font-bold mb-2">
+    <div className="p-4 max-w-md mx-auto space-y-4">
+      <h1 className="text-2xl font-bold">
         {contractor.businessName} – Request a Quote
       </h1>
-      <p className="mb-4">{contractor.introMessage}</p>
-
+      <p>{contractor.introMessage}</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="font-medium">Name</span>
@@ -84,35 +66,32 @@ export default function PublicQuote({ contractor }) {
             type="text"
             className="mt-1 block w-full border rounded p-2"
             value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
             required
           />
         </label>
-
         <label className="block">
           <span className="font-medium">Email</span>
           <input
             type="email"
             className="mt-1 block w-full border rounded p-2"
             value={form.email}
-            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
             required
           />
         </label>
-
         <label className="block">
           <span className="font-medium">Issue Description</span>
           <textarea
             className="mt-1 block w-full border rounded p-2"
+            rows={4}
             value={form.description}
-            onChange={e =>
+            onChange={(e) =>
               setForm(f => ({ ...f, description: e.target.value }))
             }
-            rows={4}
             required
           />
         </label>
-
         <button
           type="submit"
           className="w-full bg-green-600 text-white py-2 rounded"
@@ -124,16 +103,10 @@ export default function PublicQuote({ contractor }) {
   )
 }
 
-// ----------------------------------------------------------------------------
-// Server-side data fetching
-// ----------------------------------------------------------------------------
-
+// Server-side fetch—no public Firestore reads
 export async function getServerSideProps({ params }) {
   try {
-    // Inline Firebase Admin init
-    const { initializeApp, cert, getApps } = require('firebase-admin/app')
-    const { getFirestore } = require('firebase-admin/firestore')
-
+    // Initialize Admin SDK if not already
     if (!getApps().length) {
       initializeApp({
         credential: cert({
