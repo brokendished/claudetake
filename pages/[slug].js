@@ -6,17 +6,21 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 
 export default function PublicQuote({ contractor }) {
-  const [form, setForm] = useState({ name: '', email: '', description: '' })
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    description: '',
+  })
   const [submitted, setSubmitted] = useState(false)
   const [quoteId, setQuoteId] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
 
-    // 1) Grab the consumer’s Firebase ID token
+    // 1) Get the consumer’s Firebase ID token
     const idToken = await auth.currentUser.getIdToken()
 
-    // 2) Send form + token to your API
+    // 2) Send the form data + token
     const res = await fetch(`/api/contractor/${contractor.uid}/quotes`, {
       method: 'POST',
       headers: {
@@ -27,7 +31,6 @@ export default function PublicQuote({ contractor }) {
     })
     const { id } = await res.json()
 
-    console.log('Created new quote with ID:', id)
     setQuoteId(id)
     setSubmitted(true)
   }
@@ -40,6 +43,9 @@ export default function PublicQuote({ contractor }) {
           Your quote request <strong>#{quoteId}</strong> has been sent to{' '}
           <strong>{contractor.businessName}</strong>.
         </p>
+        <p className="mt-4 text-sm text-gray-600">
+          You’ll receive updates at <strong>{form.email}</strong>.
+        </p>
       </div>
     )
   }
@@ -50,6 +56,7 @@ export default function PublicQuote({ contractor }) {
         {contractor.businessName} – Request a Quote
       </h1>
       <p>{contractor.introMessage}</p>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="font-medium">Name</span>
@@ -57,20 +64,26 @@ export default function PublicQuote({ contractor }) {
             type="text"
             className="mt-1 block w-full border rounded p-2"
             value={form.name}
-            onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, name: e.target.value }))
+            }
             required
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Email</span>
           <input
             type="email"
             className="mt-1 block w-full border rounded p-2"
             value={form.email}
-            onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, email: e.target.value }))
+            }
             required
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Issue Description</span>
           <textarea
@@ -78,11 +91,12 @@ export default function PublicQuote({ contractor }) {
             rows={4}
             value={form.description}
             onChange={(e) =>
-              setForm(f => ({ ...f, description: e.target.value }))
+              setForm((f) => ({ ...f, description: e.target.value }))
             }
             required
           />
         </label>
+
         <button
           type="submit"
           className="w-full bg-green-600 text-white py-2 rounded"
@@ -94,9 +108,10 @@ export default function PublicQuote({ contractor }) {
   )
 }
 
-// Server-side fetch—no public Firestore reads
+// Server-side fetch—securely loads the contractor’s settings
 export async function getServerSideProps({ params }) {
   try {
+    // Initialize Admin SDK once
     if (!getApps().length) {
       initializeApp({
         credential: cert({
