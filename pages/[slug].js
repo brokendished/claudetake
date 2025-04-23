@@ -1,22 +1,24 @@
 // pages/[slug].js
 
-import { useState } from 'react'
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { useSession } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 
 export default function PublicQuote({ contractor }) {
-  const [form, setForm] = useState({ name: '', email: '', description: '' })
-  const [submitted, setSubmitted] = useState(false)
-
+  const { data: session } = useSession()
+  // …
   async function handleSubmit(e) {
     e.preventDefault()
+    const headers = { 'Content-Type': 'application/json' }
+    // If consumer signed in, include Firebase token
+    if (session?.firebaseToken) {
+      headers['Authorization'] = `Bearer ${session.firebaseToken}`
+    }
     await fetch(`/api/contractor/${contractor.uid}/quotes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(form),
     })
-    setSubmitted(true)
-  }
+    setSubmitted(true)  }
 
   if (submitted) {
     return (
@@ -113,4 +115,5 @@ export async function getServerSideProps({ params }) {
     console.error('🚨 [slug] getServerSideProps error:', err)
     return { notFound: true }
   }
+}
 }
