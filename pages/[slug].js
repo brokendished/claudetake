@@ -27,6 +27,7 @@ export default function PublicQuote({ contractor }) {
     })
     const { id } = await res.json()
 
+    console.log('Created new quote with ID:', id)
     setQuoteId(id)
     setSubmitted(true)
   }
@@ -39,16 +40,6 @@ export default function PublicQuote({ contractor }) {
           Your quote request <strong>#{quoteId}</strong> has been sent to{' '}
           <strong>{contractor.businessName}</strong>.
         </p>
-        <dl className="mt-4 space-y-2">
-          <div>
-            <dt className="font-medium">Email</dt>
-            <dd>{form.email}</dd>
-          </div>
-          <div>
-            <dt className="font-medium">Description</dt>
-            <dd>{form.description}</dd>
-          </div>
-        </dl>
       </div>
     )
   }
@@ -106,7 +97,6 @@ export default function PublicQuote({ contractor }) {
 // Server-side fetch—no public Firestore reads
 export async function getServerSideProps({ params }) {
   try {
-    // Initialize Admin SDK if not already
     if (!getApps().length) {
       initializeApp({
         credential: cert({
