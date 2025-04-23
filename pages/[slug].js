@@ -1,15 +1,27 @@
 // pages/[slug].js
 
-import { useSession } from 'next-auth/react'
-import { signIn, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { useSession, signIn, signOut } from 'next-auth/react'
 
 export default function PublicQuote({ contractor }) {
   const { data: session } = useSession()
-  // …
+  const [form, setForm] = useState({ name: '', email: '', description: '' })
+  const [submitted, setSubmitted] = useState(false)
+
+  // If signed in, prefill name/email
+  useEffect(() => {
+    if (session?.user) {
+      setForm(f => ({
+        ...f,
+        name: session.user.name || f.name,
+        email: session.user.email || f.email,
+      }))
+    }
+  }, [session])
+
   async function handleSubmit(e) {
     e.preventDefault()
     const headers = { 'Content-Type': 'application/json' }
-    // If consumer signed in, include Firebase token
     if (session?.firebaseToken) {
       headers['Authorization'] = `Bearer ${session.firebaseToken}`
     }
@@ -18,8 +30,8 @@ export default function PublicQuote({ contractor }) {
       headers,
       body: JSON.stringify(form),
     })
-    setSubmitted(true)  }
-}
+    setSubmitted(true)
+  }
 
   if (submitted) {
     return (
@@ -27,16 +39,44 @@ export default function PublicQuote({ contractor }) {
         <p className="text-lg">
           {contractor.thankYouMessage || 'Thanks! We’ll be in touch.'}
         </p>
+        {session && (
+          <button
+            onClick={() => signOut()}
+            className="mt-4 text-sm text-blue-600"
+          >
+            Sign out ({session.user.email})
+          </button>
+        )}
       </div>
     )
   }
 
   return (
     <div className="p-4 max-w-md mx-auto">
+      {session ? (
+        <div className="mb-4 text-sm">
+          Signed in as <strong>{session.user.email}</strong>.{' '}
+          <button onClick={() => signOut()} className="underline">
+            Sign out
+          </button>
+        </div>
+      ) : (
+        <div className="mb-4 text-sm">
+          <button
+            onClick={() => signIn('google')}
+            className="underline text-blue-600"
+          >
+            Sign in with Google
+          </button>{' '}
+          or continue as guest.
+        </div>
+      )}
+
       <h1 className="text-xl font-bold mb-2">
         {contractor.businessName} – Request a Quote
       </h1>
       <p className="mb-4">{contractor.introMessage}</p>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="font-medium">Name</span>
@@ -48,6 +88,7 @@ export default function PublicQuote({ contractor }) {
             required
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Email</span>
           <input
@@ -58,6 +99,7 @@ export default function PublicQuote({ contractor }) {
             required
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Issue Description</span>
           <textarea
@@ -70,6 +112,7 @@ export default function PublicQuote({ contractor }) {
             required
           />
         </label>
+
         <button
           type="submit"
           className="w-full bg-green-600 text-white py-2 rounded"
@@ -81,10 +124,16 @@ export default function PublicQuote({ contractor }) {
   )
 }
 
-// Server‑side fetch so there are no public Firestore reads
+// ----------------------------------------------------------------------------
+// Server-side data fetching
+// ----------------------------------------------------------------------------
+
 export async function getServerSideProps({ params }) {
   try {
-    // Initialize Firebase Admin SDK if not already
+    // Inline Firebase Admin init
+    const { initializeApp, cert, getApps } = require('firebase-admin/app')
+    const { getFirestore } = require('firebase-admin/firestore')
+
     if (!getApps().length) {
       initializeApp({
         credential: cert({
@@ -116,5 +165,4 @@ export async function getServerSideProps({ params }) {
     console.error('🚨 [slug] getServerSideProps error:', err)
     return { notFound: true }
   }
-}
 }
