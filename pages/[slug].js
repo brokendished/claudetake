@@ -19,6 +19,7 @@ export default function PublicQuote({ contractor }) {
       body: JSON.stringify(form),
     })
     setSubmitted(true)  }
+}
 
   if (submitted) {
     return (
