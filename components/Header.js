@@ -22,7 +22,7 @@ export default function Header() {
       <div className="w-1/3 flex justify-end items-center gap-3">
         {session?.user && (
           <Link
-            href="/portal/dashboard"
+            href="/dashboard"
             className="bg-white text-black px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition"
           >
             Dashboard
