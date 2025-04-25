@@ -1,10 +1,12 @@
 // libs/firebaseAuth.js
+
+import axios from 'axios';
 import { getAuth, signInWithCustomToken } from 'firebase/auth';
 
 /**
  * Synchronizes a NextAuth session with Firebase Authentication
- * @param {Object} session - The NextAuth session object 
- * @returns {Promise<Object>} The Firebase user if successful
+ * @param {Object} session - The NextAuth session object
+ * @returns {Promise<Object|null>} The Firebase user if successful, or null
  */
 export async function syncNextAuthWithFirebase(session) {
   if (!session?.user?.email) {
@@ -18,7 +20,7 @@ export async function syncNextAuthWithFirebase(session) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: session.user.email,
-        name: session.user.name || '',
+        name:  session.user.name || '',
       }),
     });
 
@@ -37,3 +39,31 @@ export async function syncNextAuthWithFirebase(session) {
     return null;
   }
 }
+
+/**
+ * Verifies email and password against Firebase Authentication REST API
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<Object|null>} User info { uid, email, displayName } or null
+ */
+export async function verifyPassword(email, password) {
+  const apiKey = process.env.FIREBASE_WEB_API_KEY;
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+
+  try {
+    const { data } = await axios.post(url, {
+      email,
+      password,
+      returnSecureToken: true,
+    });
+    return {
+      uid:         data.localId,
+      email:       data.email,
+      displayName: data.displayName || ''
+    };
+  } catch (error) {
+    console.error('Firebase password sign-in failed:', error.response?.data || error.message);
+    return null;
+  }
+}
+
