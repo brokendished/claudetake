@@ -5,7 +5,7 @@ import { getFirestore, serverTimestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { Resend } from 'resend';
 
-// 1. Initialize Firebase Admin & Resend
+// 1. Initialize Firebase Admin & Resend email service
 initAdmin();
 const adminDb   = getFirestore();
 const authAdmin = getAuth();
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 2. Extract and verify Firebase ID token (for consumer UID)
+  // 2. Extract and verify Firebase ID token (to get consumer UID)
   const authHeader = req.headers.authorization || '';
   let consumerUid = null;
   if (authHeader.startsWith('Bearer ')) {
@@ -26,7 +26,6 @@ export default async function handler(req, res) {
       consumerUid = decoded.uid;
     } catch (e) {
       console.warn('Invalid auth token:', e.message);
-      // proceed anonymously if no valid token
     }
   }
 
@@ -48,7 +47,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Not authorized to submit this quote' });
     }
 
-    // 5. Build email HTML for user and contractor
+    // 5. Build email HTML for user
     const userEmailHtml = `
       <h1>Your Quote Request Has Been Submitted</h1>
       <p>Hi ${userInfo.name || 'there'},</p>
@@ -62,6 +61,7 @@ export default async function handler(req, res) {
       <p>Thank you for using our service!</p>
     `;
 
+    // 6. Build email HTML for contractor
     const contractorEmailHtml = `
       <h1>New Quote Request</h1>
       <p>A new quote request has been submitted:</p>
@@ -76,16 +76,14 @@ export default async function handler(req, res) {
         ? `<p><strong>Images:</strong></p>
            <div>
              ${imageURLs
-               .map(
-                 (url) => `<img src="${url}" style="max-width:200px;margin:5px;" />`
-               )
+               .map(url => `<img src="${url}" style="max-width:200px;margin:5px;" />`)
                .join('')}
            </div>`
         : '<p>No images provided.</p>'}
       <p>Please check your dashboard to review and respond.</p>
     `;
 
-    // 6. Send emails
+    // 7. Send emails
     const contractorEmail = process.env.CONTRACTOR_EMAIL;
     await Promise.all([
       resend.emails.send({
@@ -102,13 +100,13 @@ export default async function handler(req, res) {
       }),
     ]);
 
-    // 7. Update top‐level quote status
+    // 8. Update top-level quote status
     await quoteRef.update({
       status:      'Submitted',
       submittedAt: serverTimestamp(),
     });
 
-    // 8. Mirror into /consumers/{uid}/quotes/{quoteId}
+    // 9. Mirror into /consumers/{uid}/quotes/{quoteId}
     if (consumerUid) {
       await adminDb
         .collection('consumers')
@@ -125,13 +123,15 @@ export default async function handler(req, res) {
         );
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: 'Quote submitted successfully' });
+    return res.status(200).json({
+      success: true,
+      message: 'Quote submitted successfully',
+    });
   } catch (error) {
     console.error('Error submitting quote:', error);
-    return res
-      .status(500)
-      .json({ error: 'Failed to submit quote', message: error.message });
+    return res.status(500).json({
+      error:   'Failed to submit quote',
+      message: error.message,
+    });
   }
 }
