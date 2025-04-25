@@ -1,69 +1,10 @@
-// pages/dashboard.js
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { auth, db } from '../libs/firebaseClient';
-
-export default function Dashboard() {
-  const [user, loading] = useAuthState(auth);
-  const [quotes, setQuotes] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredQuotes, setFilteredQuotes] = useState([]);
-  const router = useRouter();
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-
-  // Load all quotes submitted by this user
-  useEffect(() => {
-    if (loading || !user) return;
-    const loadQuotes = async () => {
-      try {
-        const q = query(
-          collectionGroup(db, 'quotes'),
-          where('ownerId', '==', user.uid),
-          orderBy('createdAt', 'desc')
-        );
-        const snap = await getDocs(q);
-        const data = snap.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            ...d,
-            createdAt: d.createdAt?.toDate?.() || new Date()
-          };
-        });
-        setQuotes(data);
-      } catch (err) {
-        console.error('Error loading quotes:', err);
-      }
-    };
-    loadQuotes();
-  }, [user, loading]);
-
-  // Filter quotes by search term
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      setFilteredQuotes(
-        quotes.filter(q =>
-          (q.aiReply || '').toLowerCase().includes(term) ||
-          (q.issue || '').toLowerCase().includes(term)
-        )
-      );
     } else {
-      setFilteredQuotes(quotes);
+      setFilteredQuotes(quotes)
     }
-  }, [searchTerm, quotes]);
+  }, [searchTerm, quotes])
 
-  if (loading || !user) {
-    return <p className="p-4">Loading…</p>;
+  if (status !== 'authenticated') {
+    return <p className="p-4">Loading your session…</p>
   }
 
   return (
@@ -120,5 +61,5 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  );
+  )
 }
