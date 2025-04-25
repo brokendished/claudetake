@@ -1,3 +1,60 @@
+import { useState, useEffect } from 'react';
+import { useSession, signIn } from 'next-auth/react';
+
+export default function DeliverySettings() {
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated: () => signIn(),
+  });
+
+  const [form, setForm] = useState({ quoteEmail: '', webhookUrl: '', linkSlug: '' });
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch('/api/contractor/profile', {
+        headers: { Authorization: `Bearer ${session.firebaseToken}` }
+      })
+        .then(r => r.json())
+        .then(data => {
+          setForm({
+            quoteEmail: data.quoteDelivery?.email || '',
+            webhookUrl: data.quoteDelivery?.webhookUrl || '',
+            linkSlug: data.linkSlug || ''
+          });
+        });
+    }
+  }, [status, session]);
+
+  async function save() {
+    setSaving(true);
+    await fetch('/api/contractor/profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.firebaseToken}`
+      },
+      body: JSON.stringify({
+        quoteDelivery: { email: form.quoteEmail, webhookUrl: form.webhookUrl },
+        linkSlug: form.linkSlug.trim(),
+      }),
+    });
+    setSaving(false);
+  }
+
+  function copyUrl() {
+    const url = `${window.location.origin}/${form.linkSlug}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (status !== 'authenticated') return null;
+
+  return (
+    <div className="p-4 max-w-lg space-y-6">
+      <h1 className="text-2xl font-bold">Quote Delivery & Link</h1>
 
       <label className="block">
         <span>Send quotes to (email)</span>
@@ -23,7 +80,7 @@
         <span>Your shareable link slug</span>
         <div className="flex">
           <span className="bg-gray-100 px-2 py-1 rounded-l">
-            {window.location.origin}/
+            {typeof window !== 'undefined' ? window.location.origin : ''}/
           </span>
           <input
             type="text"
@@ -32,9 +89,7 @@
             className="flex-1 border rounded-r p-2"
           />
         </div>
-        <p className="text-sm text-gray-500">
-          lowercase letters, numbers & dashes only
-        </p>
+        <p className="text-sm text-gray-500">lowercase letters, numbers & dashes only</p>
       </label>
 
       {form.linkSlug && (
