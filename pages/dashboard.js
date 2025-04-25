@@ -1,69 +1,69 @@
 // pages/dashboard.js
 
-import { useEffect, useState } from 'react'
-import { useSession, signIn } from 'next-auth/react'
-import {
-  collectionGroup,
-  query,
-  where,
-  orderBy,
-  getDocs
-} from 'firebase/firestore'
-import { db } from '../libs/firebaseClient'
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { auth, db } from '../libs/firebaseClient';
 
 export default function Dashboard() {
-  const { data: session, status } = useSession({
-    required: true,
-    onUnauthenticated: () => signIn('google'),
-  })
-  const [quotes, setQuotes] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filteredQuotes, setFilteredQuotes] = useState([])
+  const [user, loading] = useAuthState(auth);
+  const [quotes, setQuotes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredQuotes, setFilteredQuotes] = useState([]);
+  const router = useRouter();
 
-  // 1) Load all quotes across contractors for this consumer
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (status !== 'authenticated') return
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  // Load all quotes submitted by this user
+  useEffect(() => {
+    if (loading || !user) return;
     const loadQuotes = async () => {
       try {
         const q = query(
-          collectionGroup(db, 'quotes'),               // ← search every sub-collection named “quotes”
-          where('email', '==', session.user.email),    // ← only your email
-          orderBy('createdAt', 'desc')                 // ← newest first
-        )
-        const snap = await getDocs(q)
+          collectionGroup(db, 'quotes'),
+          where('ownerId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+        const snap = await getDocs(q);
         const data = snap.docs.map(doc => {
-          const d = doc.data()
+          const d = doc.data();
           return {
             id: doc.id,
             ...d,
             createdAt: d.createdAt?.toDate?.() || new Date()
-          }
-        })
-        setQuotes(data)
+          };
+        });
+        setQuotes(data);
       } catch (err) {
-        console.error('Error loading quotes:', err)
+        console.error('Error loading quotes:', err);
       }
-    }
-    loadQuotes()
-  }, [session, status])
+    };
+    loadQuotes();
+  }, [user, loading]);
 
-  // 2) Filter by search term
+  // Filter quotes by search term
   useEffect(() => {
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.toLowerCase();
       setFilteredQuotes(
         quotes.filter(q =>
-          (q.aiReply  || '').toLowerCase().includes(term) ||
-          (q.issue    || '').toLowerCase().includes(term)
+          (q.aiReply || '').toLowerCase().includes(term) ||
+          (q.issue || '').toLowerCase().includes(term)
         )
-      )
+      );
     } else {
-      setFilteredQuotes(quotes)
+      setFilteredQuotes(quotes);
     }
-  }, [searchTerm, quotes])
+  }, [searchTerm, quotes]);
 
-  if (status !== 'authenticated') {
-    return <p className="p-4">Loading your session…</p>
+  if (loading || !user) {
+    return <p className="p-4">Loading…</p>;
   }
 
   return (
@@ -120,5 +120,5 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  )
+  );
 }
