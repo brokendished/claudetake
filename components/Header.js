@@ -1,42 +1,49 @@
+'use client';
+
 import Link from 'next/link';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../libs/firebaseClient';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Header() {
-  const [user, loading] = useAuthState(auth);
-
-  const handleLogout = async () => {
-    await auth.signOut();
-    window.location.href = '/login';
-  };
+  const { data: session } = useSession();
 
   return (
-    <header className="flex justify-between items-center p-4 bg-gray-800 text-white">
-      <Link href="/">
-        <span className="text-xl font-bold">AI Quote Chatbot</span>
-      </Link>
-      <nav className="space-x-4">
-        {!loading && !user && (
-          <>
-            <Link href="/login">
-              <a>Log In</a>
-            </Link>
-            <Link href="/signup">
-              <a>Sign Up</a>
-            </Link>
-          </>
+    <header className="w-full bg-black text-white shadow-md py-4 px-6 flex items-center justify-between">
+      {/* Left (empty for spacing or use later) */}
+      <div className="w-1/3" />
+
+      {/* Center: Logo */}
+      <div className="w-1/3 text-center">
+        <Link href="/">
+          <span className="text-xl font-bold tracking-wide">GetQuote</span>
+        </Link>
+      </div>
+
+      {/* Right: Auth / Dashboard */}
+      <div className="w-1/3 flex justify-end items-center gap-3">
+        {session?.user && (
+          <Link
+            href="/dashboard"
+            className="bg-white text-black px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition"
+          >
+            Dashboard
+          </Link>
         )}
-        {!loading && user && (
-          <>
-            <Link href="/dashboard">
-              <a>Dashboard</a>
-            </Link>
-            <button onClick={handleLogout} className="ml-2">
-              Log Out
-            </button>
-          </>
+        {session?.user ? (
+          <button
+            onClick={() => signOut()}
+            className="text-sm hover:underline"
+          >
+            Sign out
+          </button>
+        ) : (
+          <button
+            onClick={() => signIn('google')}
+            className="text-sm hover:underline"
+          >
+            Sign in
+          </button>
         )}
-      </nav>
+      </div>
     </header>
   );
 }
