@@ -2,17 +2,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db, storage } from '../libs/firebaseClient';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import {
-+   collection,
-+   addDoc,
-+   serverTimestamp,
-+   doc,
-+   getDoc,
-+   setDoc,
-+   writeBatch,
-+   updateDoc
-+ } from 'firebase/firestore';
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  setDoc,
+  writeBatch,
+  updateDoc
+} from 'firebase/firestore';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import summarizeQuote from '../libs/summarizeQuote';
 import { speak } from '../libs/speech';
@@ -351,8 +352,8 @@ useEffect(() => {
         body: JSON.stringify({
           sessionId: sessionId.current,
           messages: [...messages, userMsg],
-          name: session?.user?.name || '',
-          email: session?.user?.email || '',
+       name: user?.displayName || '',    
+    email: user?.email || '',
           image: imageURLs[imageURLs.length - 1] || '',
         }),
         // Add timeout signal
@@ -498,7 +499,7 @@ useEffect(() => {
 
 
 const submitQuote = useCallback(async () => {
-  if (!session?.user?.email || !isMounted.current) {
+  if (!user?.email || !isMounted.current) {
     setError('You need to be logged in to submit quotes');
     return;
   }
@@ -529,8 +530,8 @@ const submitQuote = useCallback(async () => {
     
     // Collect user information
     const userInfo = {
-      name: session?.user?.name || '',
-      email: session?.user?.email || '',
+      name: user?.displayName || '',
+      email: user?.email || '',
       quoteId: quoteRef.current.id,
       summary: summary,
       timestamp: new Date().toISOString(),
@@ -713,7 +714,7 @@ const takeScreenshot = useCallback(async (dataURL) => {
   }, [stopStream]);
 
 const saveFinalQuote = useCallback(async () => {
-  if (!session?.user?.email || !isMounted.current) {
+  if (user?.email || !isMounted.current) {
     setError('You need to be logged in to save quotes');
     return;
   }
@@ -779,7 +780,7 @@ const saveFinalQuote = useCallback(async () => {
     const quoteData = {
       sessionId: sessionId.current,
       timestamp: serverTimestamp(),
-      name: session?.user?.name || '',
+      name: user?.displayName || '',
       email: firebaseUser.email, // Use Firebase auth email to match security rules
       images: imageURLs,
       issue: summary,
@@ -926,7 +927,7 @@ const saveFinalQuote = useCallback(async () => {
   return (
     <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">
       <div className="flex flex-col w-full max-w-[600px] pt-6 pb-4 bg-white rounded-lg shadow-md">
-        {!session?.user?.email && (
+        {!user?.email && (
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-2 mb-2 rounded">
             You're not logged in — your chat is temporary and won't be saved to your dashboard.
           </div>
@@ -1034,7 +1035,7 @@ const saveFinalQuote = useCallback(async () => {
     >
      📷 Add Photo
           </button>
-          {session?.user?.email && !quoteRef.current && (
+          {user?.email && !quoteRef.current && (
             <button
               onClick={saveFinalQuote}
               className="text-sm bg-green-600 text-white rounded-full px-3 py-1 shadow hover:bg-green-700"
@@ -1043,7 +1044,7 @@ const saveFinalQuote = useCallback(async () => {
               {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
             </button>
           )}
-          {session?.user?.email && (
+          {user?.email && (
             <button
               onClick={submitQuote}
               className="text-sm bg-blue-600 text-white rounded-full px-3 py-1 shadow hover:bg-blue-700"
