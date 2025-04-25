@@ -1,10 +1,68 @@
-    } else {
-      setFilteredQuotes(quotes)
+import { useEffect, useState } from 'react';
+import { useSession, signIn } from 'next-auth/react';
+import {
+  collectionGroup,
+  query,
+  where,
+  orderBy,
+  getDocs
+} from 'firebase/firestore';
+import { db } from '../libs/firebaseClient';
+
+export default function Dashboard() {
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated: () => signIn('google'),
+  });
+
+  const [quotes, setQuotes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredQuotes, setFilteredQuotes] = useState([]);
+
+  // Load quotes once authenticated
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    async function loadQuotes() {
+      try {
+        const q = query(
+          collectionGroup(db, 'quotes'),
+          where('email', '==', session.user.email),
+          orderBy('createdAt', 'desc')
+        );
+        const snap = await getDocs(q);
+        const data = snap.docs.map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            ...d,
+            createdAt: d.createdAt?.toDate?.() || new Date()
+          };
+        });
+        setQuotes(data);
+      } catch (error) {
+        console.error('Error loading quotes:', error);
+      }
     }
-  }, [searchTerm, quotes])
+    loadQuotes();
+  }, [session, status]);
+
+  // Filter by keyword
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      setFilteredQuotes(
+        quotes.filter(q =>
+          (q.issue   || '').toLowerCase().includes(term) ||
+          (q.aiReply || '').toLowerCase().includes(term)
+        )
+      );
+    } else {
+      setFilteredQuotes(quotes);
+    }
+  }, [searchTerm, quotes]);
 
   if (status !== 'authenticated') {
-    return <p className="p-4">Loading your session…</p>
+    return <p className="p-4">Loading your session…</p>;
   }
 
   return (
@@ -61,5 +119,5 @@
         )}
       </div>
     </div>
-  )
+  );
 }
