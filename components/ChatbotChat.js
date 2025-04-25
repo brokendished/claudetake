@@ -1,20 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { db, storage } from '../libs/firebaseClient';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db, storage } from '../libs/firebaseClient';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  onSnapshot,
-  doc,
-  getDoc,
-  setDoc,
-  writeBatch,
-  updateDoc // Add this import
-} from 'firebase/firestore';
++   collection,
++   addDoc,
++   serverTimestamp,
++   doc,
++   getDoc,
++   setDoc,
++   writeBatch,
++   updateDoc
++ } from 'firebase/firestore';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
-import { useSession } from 'next-auth/react';
 import summarizeQuote from '../libs/summarizeQuote';
 import { speak } from '../libs/speech';
 import { v4 as uuidv4 } from 'uuid';
@@ -54,7 +53,7 @@ export default function ChatbotChat() {
   const isMounted = useRef(true);
   const lastAskedRef = useRef('');
   const quoteRef = useRef(null);
-  const { data: session } = useSession();
+  const [user, loading] = useAuthState(auth);
 
 const sessionId = useRef(null);
 
