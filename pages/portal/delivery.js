@@ -1,61 +1,86 @@
 // pages/portal/delivery.js
+
 import { useState, useEffect } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useRouter } from 'next/router';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../../libs/firebaseClient';
 
 export default function DeliverySettings() {
-  const { data: session, status } = useSession({
-    required: true,
-    onUnauthenticated: () => signIn(),
-  });
-  const [form, setForm] = useState({
-    quoteEmail: '', webhookUrl: '', linkSlug: ''
-  });
+  const [user, loading] = useAuthState(auth);
+  const router = useRouter();
+
+  const [form, setForm] = useState({ quoteEmail: '', webhookUrl: '', linkSlug: '' });
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Load existing
+  // Redirect unauthenticated users to login
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetch('/api/contractor/profile', {
-        headers: { Authorization: `Bearer ${session.firebaseToken}` }
-      })
-        .then(r => r.json())
-        .then(data => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  // Load existing settings for this contractor
+  useEffect(() => {
+    if (user) {
+      (async () => {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          const res = await fetch(`/api/contractor/${user.uid}/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error('Failed to fetch profile');
+          const data = await res.json();
           setForm({
             quoteEmail: data.quoteDelivery?.email || '',
             webhookUrl: data.quoteDelivery?.webhookUrl || '',
-            linkSlug: data.linkSlug || ''
+            linkSlug: data.linkSlug || '',
           });
-        });
+        } catch (err) {
+          console.error('Error loading settings:', err);
+        }
+      })();
     }
-  }, [status]);
+  }, [user]);
 
-  async function save() {
+  // Save settings
+  const save = async () => {
+    if (!user) return;
     setSaving(true);
-    await fetch('/api/contractor/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.firebaseToken}`
-      },
-      body: JSON.stringify({
-        quoteDelivery: { email: form.quoteEmail, webhookUrl: form.webhookUrl },
-        linkSlug: form.linkSlug.trim(),
-      }),
-    });
-    setSaving(false);
-  }
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch(`/api/contractor/${user.uid}/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          quoteDelivery: { email: form.quoteEmail, webhookUrl: form.webhookUrl },
+          linkSlug: form.linkSlug.trim(),
+        }),
+      });
+    } catch (err) {
+      console.error('Error saving settings:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  function copyUrl() {
-    const url = `${window.location.origin}/${form.linkSlug}`;
-    navigator.clipboard.writeText(url);
+  // Copy shareable link
+  const copyUrl = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    navigator.clipboard.writeText(`${origin}/${form.linkSlug}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (loading || !user) {
+    return <p className="p-4">Loading…</p>;
   }
 
-  if (status !== 'authenticated') return null;
   return (
-    <div className="p-4 max-w-lg space-y-6">
+    <div className="p-4 max-w-lg mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Quote Delivery & Link</h1>
 
       <label className="block">
@@ -63,7 +88,7 @@ export default function DeliverySettings() {
         <input
           type="email"
           value={form.quoteEmail}
-          onChange={e => setForm(f => ({ ...f, quoteEmail: e.target.value }))}
+          onChange={(e) => setForm(f => ({ ...f, quoteEmail: e.target.value }))}
           className="mt-1 block w-full border rounded p-2"
         />
       </label>
@@ -73,7 +98,7 @@ export default function DeliverySettings() {
         <input
           type="url"
           value={form.webhookUrl}
-          onChange={e => setForm(f => ({ ...f, webhookUrl: e.target.value }))}
+          onChange={(e) => setForm(f => ({ ...f, webhookUrl: e.target.value }))}
           className="mt-1 block w-full border rounded p-2"
         />
       </label>
@@ -82,12 +107,12 @@ export default function DeliverySettings() {
         <span>Your shareable link slug</span>
         <div className="flex">
           <span className="bg-gray-100 px-2 py-1 rounded-l">
-            {window.location.origin}/
+            {typeof window !== 'undefined' ? window.location.origin : ''}/
           </span>
           <input
             type="text"
             value={form.linkSlug}
-            onChange={e => setForm(f => ({ ...f, linkSlug: e.target.value }))}
+            onChange={(e) => setForm(f => ({ ...f, linkSlug: e.target.value }))}
             className="flex-1 border rounded-r p-2"
           />
         </div>
