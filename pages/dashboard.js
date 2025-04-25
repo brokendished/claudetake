@@ -1,68 +1,65 @@
-import { useEffect, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
-import {
-  collectionGroup,
-  query,
-  where,
-  orderBy,
-  getDocs
-} from 'firebase/firestore';
-import { db } from '../libs/firebaseClient';
+// pages/dashboard.js
+
+import { useEffect, useState } from 'react'
+import { useSession, signIn } from 'next-auth/react'
+import { collection, query, orderBy, getDocs } from 'firebase/firestore'
+import { db } from '../libs/firebaseClient'
 
 export default function Dashboard() {
   const { data: session, status } = useSession({
     required: true,
-    onUnauthenticated: () => signIn('google'),
-  });
+    onUnauthenticated: () => signIn(),
+  })
 
-  const [quotes, setQuotes] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredQuotes, setFilteredQuotes] = useState([]);
+  const [quotes, setQuotes] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filteredQuotes, setFilteredQuotes] = useState([])
 
-  // Load quotes once authenticated
+  // Load this user’s quotes from /consumers/{uid}/quotes
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (status !== 'authenticated') return
+
     async function loadQuotes() {
       try {
         const q = query(
-          collectionGroup(db, 'quotes'),
-          where('email', '==', session.user.email),
+          collection(db, 'consumers', session.user.uid, 'quotes'),
           orderBy('createdAt', 'desc')
-        );
-        const snap = await getDocs(q);
+        )
+        const snap = await getDocs(q)
         const data = snap.docs.map(doc => {
-          const d = doc.data();
+          const d = doc.data()
           return {
             id: doc.id,
             ...d,
-            createdAt: d.createdAt?.toDate?.() || new Date()
-          };
-        });
-        setQuotes(data);
-      } catch (error) {
-        console.error('Error loading quotes:', error);
+            createdAt: d.createdAt?.toDate?.() || new Date(),
+          }
+        })
+        setQuotes(data)
+      } catch (err) {
+        console.error('Error loading quotes:', err)
       }
     }
-    loadQuotes();
-  }, [session, status]);
+
+    loadQuotes()
+  }, [session, status])
 
   // Filter by keyword
   useEffect(() => {
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase()
       setFilteredQuotes(
         quotes.filter(q =>
           (q.issue   || '').toLowerCase().includes(term) ||
           (q.aiReply || '').toLowerCase().includes(term)
         )
-      );
+      )
     } else {
-      setFilteredQuotes(quotes);
+      setFilteredQuotes(quotes)
     }
-  }, [searchTerm, quotes]);
+  }, [searchTerm, quotes])
 
   if (status !== 'authenticated') {
-    return <p className="p-4">Loading your session…</p>;
+    return <p className="p-4">Loading your session…</p>
   }
 
   return (
@@ -119,5 +116,5 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  );
+  )
 }
