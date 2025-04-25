@@ -1,49 +1,35 @@
-'use client';
+// components/Header.js
 
 import Link from 'next/link';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../libs/firebaseClient';
 
 export default function Header() {
-  const { data: session } = useSession();
+  const [user, loading] = useAuthState(auth);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    window.location.href = '/login';
+  };
 
   return (
-    <header className="w-full bg-black text-white shadow-md py-4 px-6 flex items-center justify-between">
-      {/* Left (empty for spacing or use later) */}
-      <div className="w-1/3" />
-
-      {/* Center: Logo */}
-      <div className="w-1/3 text-center">
-        <Link href="/">
-          <span className="text-xl font-bold tracking-wide">GetQuote</span>
-        </Link>
-      </div>
-
-      {/* Right: Auth / Dashboard */}
-      <div className="w-1/3 flex justify-end items-center gap-3">
-        {session?.user && (
-          <Link
-            href="/dashboard"
-            className="bg-white text-black px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition"
-          >
-            Dashboard
-          </Link>
+    <header className="flex justify-between items-center p-4 bg-gray-800 text-white">
+      <Link href="/">
+        <a className="text-xl font-bold">Quick Quote</a>
+      </Link>
+      <nav className="space-x-4">
+        {!loading && !user && (
+          <>          
+            <Link href="/login"><a>Log In</a></Link>
+            <Link href="/signup"><a>Sign Up</a></Link>
+          </>
         )}
-        {session?.user ? (
-          <button
-            onClick={() => signOut()}
-            className="text-sm hover:underline"
-          >
-            Sign out
-          </button>
-        ) : (
-          <button
-            onClick={() => signIn('google')}
-            className="text-sm hover:underline"
-          >
-            Sign in
-          </button>
+        {!loading && user && (
+          <>            
+            <Link href="/dashboard"><a>Dashboard</a></Link>
+            <button onClick={handleLogout} className="ml-2">Log Out</button>
+          </>
         )}
-      </div>
+      </nav>
     </header>
-  );
-}
+
