@@ -1,39 +1,52 @@
-// pages/api/auth/[...nextauth].js
-
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import admin from "firebase-admin";
-
-// 1) Initialize Firebase Admin if it isn’t already
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Make sure your private key in env has literal \n characters
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    }),
-  });
-}
+import NextAuth from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { verifyPassword } from '../../../libs/firebaseAuth';
 
 export default NextAuth({
-  // 2) Your existing Google provider
   providers: [
+    // keep your existing Google (or other) providers
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId:     process.env.GOOGLE_ID,
+      clientSecret: process.env.GOOGLE_SECRET,
     }),
+
+    // add this CredentialsProvider for email/password
+    CredentialsProvider({
+      name: 'Email & Password',
+      credentials: {
+        email:    { label: 'Email',    type: 'text' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        // call Firebase REST to verify email/password
+        const user = await verifyPassword(
+          credentials.email,
+          credentials.password
+        );
+        if (user) {
+          // NextAuth expects at minimum an { id } and optionally { name, email }
+          return { id: user.uid, name: user.displayName, email: user.email };
+        }
+        return null;
+      }
+    })
   ],
 
-  // 4) Keep your secret
-  secret: process.env.NEXTAUTH_SECRET,
-
-  // 5) Attach a Firebase custom token to the NextAuth session
-  callbacks: {
-    async session({ session, token }) {
-      // token.sub is the NextAuth user ID
-      session.firebaseToken = await admin.auth().createCustomToken(token.sub);
-      return session;
-    },
+  session: {
+    strategy: 'jwt',
   },
+
+  callbacks: {
+    // store the Firebase UID on the token
+    async jwt({ token, user }) {
+      if (user) token.uid = user.id;
+      return token;
+    },
+    // expose the UID on the `session` object
+    async session({ session, token }) {
+      session.user.uid = token.uid;
+      return session;
+    }
+  }
 });
