@@ -750,14 +750,12 @@ const saveFinalQuote = useCallback(async () => {
       }
     }
     
-    // Get the current Firebase user again (should be available now)
-    const firebaseUser = getAuth().currentUser;
-    
-    if (!firebaseUser) {
+    // Use `currentUser` instead of redeclaring `firebaseUser`
+    if (!currentUser) {
       throw new Error("Firebase authentication required. Please refresh and try again.");
     }
     
-    console.log("Using Firebase Auth with email:", firebaseUser.email);
+    console.log("Using Firebase Auth with email:", currentUser.email);
     
     // Make sure we have the session ID
     if (!sessionId.current) {
@@ -783,18 +781,18 @@ const saveFinalQuote = useCallback(async () => {
       sessionId: sessionId.current,
       timestamp: serverTimestamp(),
       name: session?.user?.name || '',
-      email: firebaseUser.email, // Use Firebase auth email to match security rules
+      email: currentUser.email, // Use Firebase auth email to match security rules
       images: imageURLs,
       issue: summary,
       contractorId: contractorId.current,
       created: new Date().toISOString(),
       status: 'Pending',
-      uid: firebaseUser.uid // Include Firebase UID for additional security
+      uid: currentUser.uid // Include Firebase UID for additional security
     };
     
     console.log("Preparing to save quote with data:", {
-      email: firebaseUser.email,
-      uid: firebaseUser.uid,
+      email: currentUser.email,
+      uid: currentUser.uid,
       hasExistingQuote: !!quoteRef.current
     });
     
@@ -805,7 +803,7 @@ const saveFinalQuote = useCallback(async () => {
       console.log("Updated existing quote:", quoteRef.current.id);
     } else {
       // Create new quote (using a predictable ID pattern for better security)
-      const userSpecificId = `quote_${firebaseUser.uid}_${Date.now()}`;
+      const userSpecificId = `quote_${currentUser.uid}_${Date.now()}`;
       const quotesCollection = collection(db, 'quotes');
       const newQuoteRef = doc(quotesCollection, userSpecificId);
       
