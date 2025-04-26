@@ -16,6 +16,7 @@ import {
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import { useSession } from 'next-auth/react';
 import summarizeQuote from '../libs/summarizeQuote';
+import { getAuth } from 'firebase/auth';
 import { speak } from '../libs/speech';
 import { v4 as uuidv4 } from 'uuid';
 
