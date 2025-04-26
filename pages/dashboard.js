@@ -17,8 +17,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
-  // Load this user’s quotes from /consumers/{uid}/quotes
-  useEffect(() => {’s quotes from /consumers/{uid}/quotes
+  // Load this user's quotes from /consumers/{uid}/quotes
+  useEffect(() => {
     if (status !== 'authenticated') return
     if (status !== 'authenticated') return      console.error('User UID is missing or session is not authenticated.');
     async function loadQuotes() {
