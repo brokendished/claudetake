@@ -508,13 +508,9 @@ const submitQuote = useCallback(async () => {
   try {
     setLoadingStates(prev => ({...prev, submittingQuote: true}));
     
-    // Make sure we have a saved quote first
-    if (!quoteRef.current) {
-      // Save the quote if it hasn't been saved yet
-      await saveFinalQuote();
-      if (!quoteRef.current) {
-        throw new Error("Failed to save the quote first");
-      }
+    const firebaseUser = await ensureFirebaseAuth();
+    if (!firebaseUser) {
+      throw new Error("Firebase authentication required. Please refresh and try again.");
     }
     
     // Generate summary for the email
@@ -723,6 +719,11 @@ const saveFinalQuote = useCallback(async () => {
   try {
     setLoadingStates(prev => ({...prev, savingQuote: true}));
     
+    const firebaseUser = await ensureFirebaseAuth();
+    if (!firebaseUser) {
+      throw new Error("Firebase authentication required. Please refresh and try again.");
+    }
+    
     // 1. Get Firebase Auth User
     const { getAuth } = await import('firebase/auth');
     const auth = getAuth();
@@ -884,7 +885,31 @@ const saveFinalQuote = useCallback(async () => {
     }
   }
 }, [messages, session, imageURLs]);
-  
+
+const ensureFirebaseAuth = useCallback(async () => {
+  const { getAuth } = await import('firebase/auth');
+  const auth = getAuth();
+  let currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    try {
+      console.log("Attempting to sync NextAuth session with Firebase...");
+      const { syncNextAuthWithFirebase } = await import('../libs/firebaseAuth');
+      await syncNextAuthWithFirebase(session);
+
+      currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("Failed to sync with Firebase Authentication");
+      }
+      console.log("Successfully synced with Firebase Auth:", currentUser.email);
+    } catch (syncError) {
+      console.error("Firebase Auth sync error:", syncError);
+      throw new Error("Failed to authenticate with Firebase. Please try signing out and back in.");
+    }
+  }
+
+  return currentUser;
+}, [session]);
 
   // Switch camera between front and back (mobile only)
   const switchCamera = useCallback(() => {
