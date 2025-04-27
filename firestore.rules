@@ -1,8 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    // Rules for the users collection
+    match /users/{userId} {
+      // Allow users to read and write their own user document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Rules for the quotes collection
+    match /quotes/{quoteId} {
+      // Allow consumers to read quotes sent to them
+      allow read: if resource.data.consumerId == request.auth.uid || resource.data.public == true;
+
+      // Allow contractors to create and manage their own quotes
+      allow write: if request.auth != null && request.auth.uid == resource.data.contractorId;
+    }
+
+    // Rules for the links collection
+    match /links/{linkId} {
+      // Allow contractors/admins to create and manage their own links
+      allow write: if request.auth != null && request.auth.uid == resource.data.creatorId;
+
+      // Allow anyone to read links (e.g., consumers accessing white-labeled links)
+      allow read: if true;
+    }
+
+    // Rules for any additional collections can be added here
   }
 }
