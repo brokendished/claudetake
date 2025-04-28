@@ -8,6 +8,13 @@ export default function ContractorHome() {
   const [contractorData, setContractorData] = useState(null);
 
   useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      router.push('/signup'); // Redirect to signup if not authenticated
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchContractorData = async () => {
       try {
         const user = auth.currentUser;

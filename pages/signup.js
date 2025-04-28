@@ -13,20 +13,24 @@ export default function Signup() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if the user already exists in Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
-        // Save initial contractor details in Firestore
+      if (userDoc.exists()) {
+        const role = userDoc.data().role;
+        if (role === 'contractor') {
+          router.push('/contractor/home');
+        } else {
+          router.push('/dashboard'); // Redirect customers to their dashboard
+        }
+      } else {
+        // Default to contractor signup if no role exists
         await setDoc(doc(db, 'users', user.uid), {
           email: user.email,
           displayName: user.displayName,
           role: 'contractor',
           createdAt: new Date(),
         });
+        router.push('/contractor/account-setup');
       }
-
-      // Redirect to account creation landing page
-      router.push('/contractor/account-setup');
     } catch (error) {
       console.error('Error signing up with Google:', error);
       alert('Error signing up: ' + error.message);

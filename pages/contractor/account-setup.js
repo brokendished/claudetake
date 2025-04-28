@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../../firebase-config';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -9,6 +9,13 @@ export default function AccountSetup() {
   const [industry, setIndustry] = useState('');
   const [companySize, setCompanySize] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      router.push('/signup'); // Redirect to signup if not authenticated
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

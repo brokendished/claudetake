@@ -23,7 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 const MAX_MESSAGES_STORAGE = 50; // Limit stored messages to prevent localStorage overflow
 const MAX_IMAGES_STORAGE = 5;    // Limit stored image references
 
-export default function ChatbotChat() {
+export default function ChatbotChat({ role }) {
   // State management
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -970,6 +970,16 @@ const ensureFirebaseAuth = useCallback(async () => {
 
   fetchSettings();
 }, [contractorId]);
+
+  useEffect(() => {
+    if (role === 'contractor') {
+      console.log('Loading contractor-specific settings...');
+      // Load contractor-specific settings
+    } else {
+      console.log('Loading customer-specific settings...');
+      // Load customer-specific settings
+    }
+  }, [role]);
 
   return (
     <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">

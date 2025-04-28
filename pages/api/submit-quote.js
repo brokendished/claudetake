@@ -12,30 +12,30 @@ const authAdmin = getAuth();
 const resend    = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // 2. Extract and verify Firebase ID token (to get consumer UID)
-  const authHeader = req.headers.authorization || '';
-  let consumerUid = null;
-  if (authHeader.startsWith('Bearer ')) {
-    try {
-      const idToken = authHeader.split(' ')[1];
-      const decoded = await authAdmin.verifyIdToken(idToken);
-      consumerUid = decoded.uid;
-    } catch (e) {
-      console.warn('Invalid auth token:', e.message);
-    }
-  }
-
-  // 3. Pull payload
-  const { userInfo, imageURLs = [], quoteId } = req.body;
-  if (!userInfo?.email || !quoteId) {
-    return res.status(400).json({ error: 'Missing required information' });
-  }
-
   try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // 2. Extract and verify Firebase ID token (to get consumer UID)
+    const authHeader = req.headers.authorization || '';
+    let consumerUid = null;
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const idToken = authHeader.split(' ')[1];
+        const decoded = await authAdmin.verifyIdToken(idToken);
+        consumerUid = decoded.uid;
+      } catch (e) {
+        console.warn('Invalid auth token:', e.message);
+      }
+    }
+
+    // 3. Pull payload
+    const { userInfo, imageURLs = [], quoteId } = req.body;
+    if (!userInfo?.email || !quoteId) {
+      return res.status(400).json({ error: 'Missing required information' });
+    }
+
     // 4. Load & authorize the existing quote
     const quoteRef  = adminDb.collection('quotes').doc(quoteId);
     const quoteSnap = await quoteRef.get();
