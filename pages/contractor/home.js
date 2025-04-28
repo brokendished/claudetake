@@ -45,13 +45,13 @@ export default function ContractorHome() {
       <div className="space-y-4">
         <button
           onClick={() => router.push('/contractor/quotes')}
-          className="w-full bg-blue-600 text-white py-2 rounded"
+          className="w-full bg-blue-600 text-white py-2 rounded-lg shadow hover:bg-blue-700 transition"
         >
           View Quotes
         </button>
         <button
           onClick={() => router.push('/contractor/settings')}
-          className="w-full bg-gray-600 text-white py-2 rounded"
+          className="w-full bg-gray-600 text-white py-2 rounded-lg shadow hover:bg-gray-700 transition"
         >
           Settings
         </button>

@@ -47,48 +47,53 @@ export default function AccountSetup() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Account Setup</h1>
-      <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
-        <input
-          type="text"
-          placeholder="Company Name"
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          required
-          className="w-full border p-2 rounded"
-        />
-        <select
-          value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-          required
-          className="w-full border p-2 rounded"
-        >
-          <option value="">Select Industry</option>
-          <option value="power-washing">Power Washing</option>
-          <option value="landscaping">Landscaping</option>
-          <option value="other">Other</option>
-        </select>
-        <select
-          value={companySize}
-          onChange={(e) => setCompanySize(e.target.value)}
-          required
-          className="w-full border p-2 rounded"
-        >
-          <option value="">Select Company Size</option>
-          <option value="1-10">1-10 Employees</option>
-          <option value="11-50">11-50 Employees</option>
-          <option value="51-200">51-200 Employees</option>
-          <option value="200+">200+ Employees</option>
-        </select>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : 'Save and Continue'}
-        </button>
-      </form>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">
+      <div className="bg-white shadow-lg rounded-lg p-6 max-w-md w-full">
+        <h1 className="text-2xl font-bold text-center mb-4">Account Setup</h1>
+        <p className="text-sm text-gray-600 text-center mb-6">
+          Tell us more about your business to get started.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Company Name"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            required
+            className="w-full border p-2 rounded-lg"
+          />
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            required
+            className="w-full border p-2 rounded-lg"
+          >
+            <option value="">Select Industry</option>
+            <option value="power-washing">Power Washing</option>
+            <option value="landscaping">Landscaping</option>
+            <option value="other">Other</option>
+          </select>
+          <select
+            value={companySize}
+            onChange={(e) => setCompanySize(e.target.value)}
+            required
+            className="w-full border p-2 rounded-lg"
+          >
+            <option value="">Select Company Size</option>
+            <option value="1-10">1-10 Employees</option>
+            <option value="11-50">11-50 Employees</option>
+            <option value="51-200">51-200 Employees</option>
+            <option value="200+">200+ Employees</option>
+          </select>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : 'Save and Continue'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
