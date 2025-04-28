@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useSession, signIn } from 'next-auth/react'
-import { collection, query, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '../libs/firebaseClient'
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
+import { db } from '../firebase-config' // Use centralized Firebase instance
 
 export default function Dashboard() {
   const { data: session, status } = useSession({
@@ -29,7 +29,8 @@ export default function Dashboard() {
       try {
         console.log('Session:', session); // Debug session data
         const q = query(
-          collection(db, 'consumers', session.user.uid, 'quotes'),
+          collection(db, 'quotes'),
+          where('consumerId', '==', session.user.uid), // Fetch quotes for the logged-in consumer
           orderBy('createdAt', 'desc')
         );
         const snap = await getDocs(q);
@@ -53,6 +54,31 @@ export default function Dashboard() {
 
     loadQuotes();
   }, [session, status]);
+
+  useEffect(() => {
+    if (session?.user?.uid) {
+      const fetchQuotes = async () => {
+        try {
+          const q = query(
+            collection(db, 'quotes'),
+            where('consumerId', '==', session.user.uid) // Fetch quotes for the logged-in consumer
+          );
+          const querySnapshot = await getDocs(q);
+          if (querySnapshot.empty) {
+            console.warn("No quotes found for this user.");
+            setQuotes([]);
+          } else {
+            const fetchedQuotes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setQuotes(fetchedQuotes);
+          }
+        } catch (error) {
+          console.error("Error fetching quotes:", error);
+        }
+      };
+
+      fetchQuotes();
+    }
+  }, [session]);
 
   // Filter by keyword
   useEffect(() => {

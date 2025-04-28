@@ -44,6 +44,7 @@ export default function ChatbotChat() {
   resetting: false,
   submittingQuote: false
   });
+  const [settings, setSettings] = useState(null);
 
   // Refs and router
   const router = useRouter();
@@ -947,6 +948,28 @@ const ensureFirebaseAuth = useCallback(async () => {
       </div>
     );
   }
+
+  useEffect(() => {
+  const fetchSettings = async () => {
+    if (contractorId.current) {
+      try {
+        const docRef = doc(db, 'users', contractorId.current);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSettings(docSnap.data().chatbotSettings);
+        } else {
+          console.warn('Contractor settings not found for ID:', contractorId.current);
+        }
+      } catch (error) {
+        console.error('Error fetching contractor settings:', error);
+      }
+    } else {
+      console.log('No contractor ID provided. Skipping settings fetch.');
+    }
+  };
+
+  fetchSettings();
+}, [contractorId]);
 
   return (
     <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">

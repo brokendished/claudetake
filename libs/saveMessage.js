@@ -13,6 +13,8 @@ import { db } from './firebaseClient';
  * @param {string} [options.image=''] Optional image URL
  * @param {boolean} [options.batch=false] Whether to use batch processing
  * @param {Object} [options.existingBatch=null] An existing batch to add to
+ * @param {string} [options.consumerId=null] The ID of the consumer
+ * @param {string} [options.contractorId=null] The ID of the contractor
  * @returns {Promise<Object|null>} The added document reference or null on error
  */
 export async function saveMessage({ 
@@ -23,7 +25,9 @@ export async function saveMessage({
   responseTo = '', 
   image = '',
   batch = false,
-  existingBatch = null
+  existingBatch = null,
+  consumerId = null, // Add consumerId
+  contractorId = null // Add contractorId
 }) {
   if (!quoteId) {
     console.error('Cannot save message: No quote ID provided');
@@ -42,6 +46,8 @@ export async function saveMessage({
       context,
       responseTo,
       timestamp: serverTimestamp(),
+      consumerId, // Include consumerId
+      contractorId // Include contractorId
     };
     
     // Add image if provided

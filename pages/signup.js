@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import firebaseApp from "../firebase-config";
+import { auth, db } from "../firebase-config"; // Use centralized Firebase instance
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
