@@ -30,12 +30,12 @@ export default NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.uid = user.id; // Store the user ID (UID) in the token
+        token.uid = user.id;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.uid = token.uid; // Expose the UID on the session object
+      session.user.uid = token.uid;
       return session;
     },
   },
