@@ -14,6 +14,12 @@ export default function LoginPage() {
       >
         Login with Google
       </button>
+      <button
+        onClick={() => signIn('email')}
+        className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 mt-4"
+      >
+        Login with Email
+      </button>
     </div>
   );
 }

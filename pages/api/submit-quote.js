@@ -128,9 +128,9 @@ export default async function handler(req, res) {
       message: 'Quote submitted successfully',
     });
   } catch (error) {
-    console.error('Error submitting quote:', error);
+    console.error('Error in submit-quote API:', error);
     return res.status(500).json({
-      error:   'Failed to submit quote',
+      error:   'Internal Server Error',
       message: error.message,
     });
   }

@@ -11,8 +11,8 @@ export default function App({ Component, pageProps: { session, ...pageProps } })
   );
 }
 
-// If `getInitialProps` is needed:
+// Correct implementation of `getInitialProps`
 App.getInitialProps = async (appContext) => {
-  const appProps = await App.getInitialProps(appContext);
-  return { ...appProps };
+  const appProps = await appContext.Component.getInitialProps?.(appContext.ctx) || {};
+  return { pageProps: appProps };
 };
