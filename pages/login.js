@@ -9,7 +9,7 @@ export default function LoginPage() {
         If you are a contractor, please use the <a href="/signup" className="text-blue-600 underline">Contractor Signup</a>.
       </p>
       <button
-        onClick={() => signIn()}
+        onClick={() => signIn('google')}
         className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
       >
         Login with Google

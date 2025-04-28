@@ -45,7 +45,7 @@ export default NextAuth({
     },
     // expose the UID on the `session` object
     async session({ session, token }) {
-      session.user.uid = token.uid;
+      session.user.uid = token.sub;
       return session;
     }
   }

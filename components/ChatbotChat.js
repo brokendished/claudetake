@@ -1060,12 +1060,18 @@ const ensureFirebaseAuth = useCallback(async () => {
             placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !loadingStates.sendingMessage && sendMessage(input)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !loadingStates.sendingMessage && input.trim()) {
+                sendMessage(input);
+              }
+            }}
             className="flex-1 outline-none px-4 text-sm"
             disabled={loadingStates.sendingMessage}
           />
           <button
-            onClick={() => sendMessage(input)}
+            onClick={() => {
+              if (input.trim()) sendMessage(input);
+            }}
             disabled={loadingStates.sendingMessage || !input.trim()}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition disabled:bg-blue-300"
           >
