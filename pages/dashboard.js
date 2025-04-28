@@ -1,86 +1,50 @@
-// pages/dashboard.js
-
-import { useEffect, useState } from 'react'
-import { useSession, signIn } from 'next-auth/react'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '../firebase-config' // Use centralized Firebase instance
+import { useEffect, useState } from 'react';
+import { useSession, signIn } from 'next-auth/react';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '../firebase-config'; // Use centralized Firebase instance
 
 export default function Dashboard() {
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated: () => signIn(),
-  })
+  });
 
-  const [quotes, setQuotes] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filteredQuotes, setFilteredQuotes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchLoading, setSearchLoading] = useState(false)
+  const [quotes, setQuotes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredQuotes, setFilteredQuotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load this user's quotes from /consumers/{uid}/quotes
+  // Load quotes for the logged-in consumer
   useEffect(() => {
-    if (status !== 'authenticated') {
-      console.error('User UID is missing or session is not authenticated.');
-      return;
-    }
-
-    async function loadQuotes() {
-      try {
-        console.log('Session:', session); // Debug session data
-        const q = query(
-          collection(db, 'quotes'),
-          where('consumerId', '==', session.user.uid), // Fetch quotes for the logged-in consumer
-          orderBy('createdAt', 'desc')
-        );
-        const snap = await getDocs(q);
-        const data = snap.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            ...d,
-            createdAt: d.createdAt?.toDate?.() || new Date(),
-          };
-        });
-        console.log('Quotes:', data); // Debug fetched quotes
-        setQuotes(data);
-      } catch (err) {
-        console.error('Error loading quotes:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadQuotes();
-  }, [session, status]);
-
-  useEffect(() => {
-    if (session?.user?.uid) {
+    if (status === 'authenticated' && session?.user?.uid) {
       const fetchQuotes = async () => {
         try {
           const q = query(
             collection(db, 'quotes'),
-            where('consumerId', '==', session.user.uid) // Fetch quotes for the logged-in consumer
+            where('consumerId', '==', session.user.uid), // Fetch quotes for the logged-in consumer
+            orderBy('createdAt', 'desc')
           );
           const querySnapshot = await getDocs(q);
-          if (querySnapshot.empty) {
-            console.warn("No quotes found for this user.");
-            setQuotes([]);
-          } else {
-            const fetchedQuotes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setQuotes(fetchedQuotes);
-          }
-        } catch (error) {
-          console.error("Error fetching quotes:", error);
+          const fetchedQuotes = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+          }));
+          setQuotes(fetchedQuotes);
+        } catch (err) {
+          console.error('Error fetching quotes:', err);
+          setError('Failed to load quotes. Please try again later.');
+        } finally {
+          setLoading(false);
         }
       };
 
       fetchQuotes();
     }
-  }, [session]);
+  }, [status, session]);
 
-  // Filter by keyword
+  // Filter quotes by search term
   useEffect(() => {
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -95,12 +59,8 @@ export default function Dashboard() {
     }
   }, [searchTerm, quotes]);
 
-  if (status !== 'authenticated') {
-    return <p className="p-4">Loading your session…</p>;
-  }
-
   if (loading) {
-    return <p>Loading...</p>;
+    return <p>Loading your quotes...</p>;
   }
 
   if (error) {
@@ -124,14 +84,8 @@ export default function Dashboard() {
         ) : (
           filteredQuotes.map(q => (
             <div key={q.id} className="border rounded-lg p-4 shadow bg-white">
-              <div className="flex justify-between items-start">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  {q.issue || 'Quote Request'}
-                </h2>
-                <span className="text-sm text-gray-500">
-                  {q.createdAt.toLocaleDateString()}
-                </span>
-              </div>
+              <h2 className="text-lg font-semibold">{q.issue || 'Quote Request'}</h2>
+              <p className="text-sm text-gray-500">{q.createdAt.toLocaleDateString()}</p>
               {q.images?.[0] && (
                 <img
                   src={q.images[0]}

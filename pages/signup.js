@@ -1,61 +1,50 @@
 import { useState } from 'react';
-import { auth, db } from "../firebase-config"; // Use centralized Firebase instance
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from "../firebase-config";
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/router';
 
 export default function Signup() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [businessName, setBusinessName] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
-  const [greeting, setGreeting] = useState('');
-  const [industry, setIndustry] = useState('');
+  const router = useRouter();
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  const handleGoogleSignup = async () => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-      // Save contractor details in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        email,
-        displayName,
-        role: 'contractor',
-        businessName,
-        logoUrl,
-        chatbotSettings: {
-          greeting,
-          industry,
-          tone: 'default', // Default tone, can be updated later
-        },
-        createdAt: new Date(),
-      });
+      // Check if the user already exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Save initial contractor details in Firestore
+        await setDoc(doc(db, 'users', user.uid), {
+          email: user.email,
+          displayName: user.displayName,
+          role: 'contractor',
+          createdAt: new Date(),
+        });
+      }
 
-      alert('Account created successfully!');
+      // Redirect to account creation landing page
+      router.push('/contractor/account-setup');
     } catch (error) {
-      console.error('Error signing up:', error);
+      console.error('Error signing up with Google:', error);
       alert('Error signing up: ' + error.message);
     }
   };
 
   return (
-    <form onSubmit={handleSignup}>
-      <h1>Contractor Signup</h1>
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <input type="text" placeholder="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-      <input type="text" placeholder="Business Name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required />
-      <input type="url" placeholder="Logo URL" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-      <input type="text" placeholder="Chatbot Greeting" value={greeting} onChange={(e) => setGreeting(e.target.value)} />
-      <select value={industry} onChange={(e) => setIndustry(e.target.value)} required>
-        <option value="">Select Industry</option>
-        <option value="power-washing">Power Washing</option>
-        <option value="landscaping">Landscaping</option>
-        <option value="other">Other</option>
-      </select>
-      <button type="submit">Sign Up</button>
-    </form>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <h1 className="text-2xl font-bold mb-4">Contractor Signup</h1>
+      <p className="text-sm text-gray-600 mb-4">
+        Sign in with Google to create your contractor account.
+      </p>
+      <button
+        onClick={handleGoogleSignup}
+        className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+      >
+        Sign Up with Google
+      </button>
+    </div>
   );
 }
