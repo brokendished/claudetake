@@ -32,8 +32,8 @@ export default async function handler(req, res) {
 
     // 3. Pull payload
     const { userInfo, imageURLs = [], quoteId } = req.body;
-    if (!userInfo?.email || !quoteId) {
-      return res.status(400).json({ error: 'Missing required information' });
+    if (!userInfo || !quoteId) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // 4. Load & authorize the existing quote
@@ -102,7 +102,9 @@ export default async function handler(req, res) {
 
     // 8. Update top-level quote status
     await quoteRef.update({
-      status:      'Submitted',
+      ...userInfo,
+      images: imageURLs,
+      status: 'Submitted',
       submittedAt: serverTimestamp(),
     });
 

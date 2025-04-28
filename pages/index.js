@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Header from '../components/Header';
 import ChatbotChat from '../components/ChatbotChat';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { signIn } from 'next-auth/react';
 
 export default function Home() {
@@ -11,7 +12,9 @@ export default function Home() {
       </Head>
       <Header />
       <main>
-        <ChatbotChat />
+        <ErrorBoundary>
+          <ChatbotChat role="customer" />
+        </ErrorBoundary>
       </main>
       <button
         onClick={() => signIn('google')}
