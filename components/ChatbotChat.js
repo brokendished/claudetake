@@ -363,8 +363,8 @@ useEffect(() => {
       });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Error: ${res.status}`);
+        const errorText = await res.text(); // Handle non-JSON responses
+        throw new Error(errorText || `Error: ${res.status}`);
       }
       
       const data = await res.json();

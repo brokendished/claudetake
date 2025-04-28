@@ -14,7 +14,7 @@ const resend    = new Resend(process.env.RESEND_API_KEY);
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return res.status(405).json({ error: 'Method not allowed' }); // Ensure JSON response
     }
 
     // 2. Extract and verify Firebase ID token (to get consumer UID)
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // 3. Pull payload
     const { userInfo, imageURLs = [], quoteId } = req.body;
     if (!userInfo || !quoteId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields' }); // Ensure JSON response
     }
 
     // 4. Load & authorize the existing quote
@@ -101,12 +101,24 @@ export default async function handler(req, res) {
     ]);
 
     // 8. Update top-level quote status
-    await quoteRef.update({
-      ...userInfo,
-      images: imageURLs,
-      status: 'Submitted',
-      submittedAt: serverTimestamp(),
-    });
+    try {
+      await quoteRef.update({
+        ...userInfo,
+        images: imageURLs,
+        status: 'Submitted',
+        submittedAt: serverTimestamp(),
+      });
+
+      return res.status(200).json({ success: true, message: 'Quote submitted successfully' });
+    } catch (error) {
+      console.error('Error in submit-quote API:', error);
+
+      if (error.code === 'permission-denied') {
+        return res.status(403).json({ error: 'Permission denied. You do not have access to this quote.' });
+      }
+
+      return res.status(500).json({ error: 'Internal Server Error', message: error.message }); // Ensure JSON response
+    }
 
     // 9. Mirror into /consumers/{uid}/quotes/{quoteId}
     if (consumerUid) {
@@ -134,6 +146,6 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error:   'Internal Server Error',
       message: error.message,
-    });
+    }); // Ensure JSON response
   }
 }
