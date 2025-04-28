@@ -505,88 +505,78 @@ const submitQuote = useCallback(async () => {
     setError('You need to be logged in to submit quotes');
     return;
   }
-  
+
   try {
-    setLoadingStates(prev => ({...prev, submittingQuote: true}));
-    
+    setLoadingStates(prev => ({ ...prev, submittingQuote: true }));
+
     const firebaseUser = await ensureFirebaseAuth();
     if (!firebaseUser) {
       throw new Error("Firebase authentication required. Please refresh and try again.");
     }
-    
-    // Generate summary for the email
+
     let summary = '';
     try {
       summary = await summarizeQuote(messages);
     } catch (error) {
-      // Fallback to first user message
       const userMessages = messages.filter(m => m.role === 'user');
-      summary = userMessages.length > 0 
-        ? userMessages[0].content 
-        : 'Quote request';
+      summary = userMessages.length > 0 ? userMessages[0].content : 'Quote request';
     }
-    
-    // Collect user information
+
     const userInfo = {
       name: session?.user?.name || '',
       email: session?.user?.email || '',
       quoteId: quoteRef.current.id,
       summary: summary,
       timestamp: new Date().toISOString(),
-      imageCount: imageURLs.length
+      imageCount: imageURLs.length,
     };
-    
-    // Send the quote submission to our API
+
     const res = await fetch('/api/submit-quote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userInfo,
-        imageURLs: imageURLs.slice(0, 3), // Send up to 3 images to avoid large payloads
-        quoteId: quoteRef.current.id
+        imageURLs: imageURLs.slice(0, 3),
+        quoteId: quoteRef.current.id,
       }),
       signal: AbortSignal.timeout(15000),
     });
-    
+
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.message || `Error: ${res.status}`);
     }
-    
-    // Update quote status in Firestore
+
     await updateDoc(quoteRef.current, {
       status: 'Submitted',
-      submittedAt: serverTimestamp()
+      submittedAt: serverTimestamp(),
     });
-    
-    // Show success message
+
     if (isMounted.current) {
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Your quote has been submitted! A confirmation email has been sent to you, and the contractor will contact you soon.'
-        }
+          content: 'Your quote has been submitted! A confirmation email has been sent to you, and the contractor will contact you soon.',
+        },
       ]);
     }
   } catch (error) {
     console.error('Failed to submit quote:', error);
-    
+
     if (isMounted.current) {
       setError('Failed to submit quote: ' + (error.message || 'Unknown error'));
-      
-      // Add error message to chat
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: `I couldn't submit your quote. Error: ${error.message || 'Unknown error'}. Please try again later.`
-        }
+          content: `I couldn't submit your quote. Error: ${error.message || 'Unknown error'}. Please try again later.`,
+        },
       ]);
     }
   } finally {
     if (isMounted.current) {
-      setLoadingStates(prev => ({...prev, submittingQuote: false}));
+      setLoadingStates(prev => ({ ...prev, submittingQuote: false }));
     }
   }
 }, [messages, session, imageURLs, isMounted]);
