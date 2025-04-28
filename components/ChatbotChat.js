@@ -1059,20 +1059,20 @@ const ensureFirebaseAuth = useCallback(async () => {
             type="text"
             placeholder="Type your message..."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)} // Ensure state updates on input change
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !loadingStates.sendingMessage && input.trim()) {
-                sendMessage(input);
+                sendMessage(input); // Trigger sendMessage on Enter key
               }
             }}
             className="flex-1 outline-none px-4 text-sm"
-            disabled={loadingStates.sendingMessage}
+            disabled={loadingStates.sendingMessage} // Ensure input is not unnecessarily disabled
           />
           <button
             onClick={() => {
-              if (input.trim()) sendMessage(input);
+              if (input.trim()) sendMessage(input); // Trigger sendMessage on button click
             }}
-            disabled={loadingStates.sendingMessage || !input.trim()}
+            disabled={loadingStates.sendingMessage || !input.trim()} // Ensure button is enabled when input is valid
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition disabled:bg-blue-300"
           >
             {loadingStates.sendingMessage ? '⏳ Sending...' : 'Send'}
