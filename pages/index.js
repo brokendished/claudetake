@@ -18,15 +18,15 @@ export default function Home() {
             <ChatbotChat role="customer" />
           </ErrorBoundary>
         </main>
-        <button
-          onClick={() => signIn('google')}
-          className="login-button bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Login
-        </button>
         <div className="flex flex-col items-center justify-center min-h-screen">
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+            onClick={() => signIn('google')}
+            className="login-button bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+          >
+            Login
+          </button>
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 mt-4"
             onClick={() => console.log('GetQuote button clicked')}
           >
             GetQuote
@@ -34,21 +34,17 @@ export default function Home() {
           <button
             className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 mt-4"
             onClick={() => console.log('Dashboard button clicked')}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}  );    </ErrorBoundary>      </div>        </div>          </button>            Sign out          >            onClick={() => console.log('Sign out button clicked')}            className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 mt-4"          <button          </button>            Dashboard          >      </div>
+          >
+            Dashboard
+          </button>
+          <button
+            className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 mt-4"
+            onClick={() => console.log('Sign out button clicked')}
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
     </ErrorBoundary>
   );
 }

@@ -341,12 +341,12 @@ useEffect(() => {
   // Send a text message
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || !isMounted.current) return;
-    
+  
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setLoadingStates(prev => ({...prev, sendingMessage: true}));
-    
+    setLoadingStates(prev => ({ ...prev, sendingMessage: true }));
+  
     try {
       const res = await fetch('/api/chatbot_chat', {
         method: 'POST',
@@ -358,49 +358,47 @@ useEffect(() => {
           email: session?.user?.email || '',
           image: imageURLs[imageURLs.length - 1] || '',
         }),
-        // Add timeout signal
         signal: AbortSignal.timeout(15000),
       });
-      
+  
       if (!res.ok) {
         const errorText = await res.text(); // Handle non-JSON responses
         throw new Error(errorText || `Error: ${res.status}`);
       }
-      
+  
       const data = await res.json();
       const assistantMsg = { role: 'assistant', content: data.reply };
-      
+  
       if (isMounted.current) {
         setMessages(prev => [...prev, assistantMsg]);
       }
-      
-      // Save message to Firestore if we have a quote reference
+  
       if (quoteRef.current && isMounted.current) {
         await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
           ...userMsg,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
         });
         await addDoc(collection(db, 'quotes', quoteRef.current.id, 'messages'), {
           ...assistantMsg,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
         });
       }
-      
+  
       if (live && isMounted.current) speak(data.reply);
     } catch (err) {
       console.error('Chatbot error:', err);
       if (isMounted.current) {
         setMessages(prev => [
-          ...prev, 
-          { 
-            role: 'assistant', 
-            content: `Sorry, I encountered an error: ${err.message || 'Unknown error'}. Please try again.` 
-          }
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Sorry, I encountered an error: ${err.message || 'Unknown error'}. Please try again.`,
+          },
         ]);
       }
     } finally {
       if (isMounted.current) {
-        setLoadingStates(prev => ({...prev, sendingMessage: false}));
+        setLoadingStates(prev => ({ ...prev, sendingMessage: false }));
       }
     }
   }, [messages, session, imageURLs, live]);
@@ -972,7 +970,8 @@ const ensureFirebaseAuth = useCallback(async () => {
   }, [role]);
 
   return (
-    <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">
+    <div>
+      <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4"></div>
       <div className="flex flex-col w-full max-w-[600px] pt-6 pb-4 bg-white rounded-lg shadow-md">
         {!session?.user?.email && (
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-2 mb-2 rounded">
