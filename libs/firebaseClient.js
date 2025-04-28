@@ -12,5 +12,3 @@ const firebaseConfig = {
 if (!getApps().length) {
   initializeApp(firebaseConfig);
 }
-
-export { auth, db, storage };
