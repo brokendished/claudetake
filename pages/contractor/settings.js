@@ -4,18 +4,29 @@ import { useRouter } from 'next/router';
 export default function ContractorSettings() {
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
+  const [logo, setLogo] = useState(null);
+  const [greeting, setGreeting] = useState('');
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('businessName', businessName);
+      formData.append('greeting', greeting);
+      if (logo) {
+        formData.append('logo', logo);
+      }
+
       const res = await fetch('/api/contractor/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, businessName }),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -23,9 +34,11 @@ export default function ContractorSettings() {
         throw new Error(errorData.error || 'Failed to save settings');
       }
 
-      router.push('/contractor/dashboard');
+      alert('Settings saved successfully!');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,14 +72,48 @@ export default function ContractorSettings() {
             required
           />
         </div>
+        <div className="mb-4">
+          <label htmlFor="logo" className="block text-sm font-medium text-gray-700">
+            Logo
+          </label>
+          <input
+            type="file"
+            id="logo"
+            accept="image/*"
+            onChange={(e) => setLogo(e.target.files[0])}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="greeting" className="block text-sm font-medium text-gray-700">
+            Default Greeting
+          </label>
+          <textarea
+            id="greeting"
+            value={greeting}
+            onChange={(e) => setGreeting(e.target.value)}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+            rows="3"
+            placeholder="Enter your default greeting message"
+          />
+        </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700"
+          className={`w-full py-2 px-4 rounded text-white ${
+            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+          }`}
+          disabled={loading}
         >
-          Save Settings
+          {loading ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
+      <button
+        onClick={() => router.push('/contractor/dashboard')}
+        className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+      >
+        View Saved Quotes
+      </button>
     </div>
   );
 }
