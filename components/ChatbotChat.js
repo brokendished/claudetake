@@ -1042,9 +1042,9 @@ const ensureFirebaseAuth = useCallback(async () => {
     <button
       onClick={() => fileInputRef.current?.click()}
       className="text-sm bg-black text-white rounded-full px-3 py-1 shadow hover:bg-gray-800"
-    ></button>
-     📷 Add Photo
-          </button>
+    >
+      📷 Add Photo
+    </button>
           {session?.user?.email && !quoteRef.current && (
             <button
               onClick={saveFinalQuote}
