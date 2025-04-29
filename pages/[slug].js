@@ -125,7 +125,7 @@ export async function getServerSideProps({ params }) {
     const doc = qs.docs[0];
     return {
       props: {
-        contractor: { contractorId: doc.id, ...doc.data() }, // Use contractorId consistently
+        contractor: { contractorId: doc.id, ...doc.data() }, // Ensure contractorId is used
       },
     };
   } catch (err) {

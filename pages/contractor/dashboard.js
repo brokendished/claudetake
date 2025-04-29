@@ -7,7 +7,7 @@ export default function ContractorDashboard() {
   useEffect(() => {
     const fetchContractorData = async () => {
       try {
-        const res = await fetch('/api/contractor/dashboard');
+        const res = await fetch('/api/contractor/dashboard'); // Ensure endpoint uses contractorId
         if (!res.ok) {
           throw new Error('Failed to fetch contractor data');
         }

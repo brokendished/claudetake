@@ -10,7 +10,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { contractorId } = req.query; // Updated from uid to contractorId
+    const { contractorId } = req.query; // Ensure contractorId is used consistently
 
     if (!contractorId) {
       return res.status(400).json({ error: 'Missing contractor ID' });
