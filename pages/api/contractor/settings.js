@@ -26,25 +26,25 @@ export default async function handler(req, res) {
       }
 
       const { name, businessName, greeting } = fields;
-      const { uid } = req.headers; // Assume UID is passed in headers for simplicity
+      const { contractorId } = req.headers; // Assume contractorId is passed in headers for simplicity
 
-      if (!uid || !name || !businessName || !greeting) {
+      if (!contractorId || !name || !businessName || !greeting) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
       let logoUrl = null;
       if (files.logo) {
-        logoUrl = await uploadFileToStorage(files.logo, `contractors/${uid}/logo`);
+        logoUrl = await uploadFileToStorage(files.logo, `contractors/${contractorId}/logo`);
       }
 
-      const contractorRef = db.collection('contractors').doc(uid);
+      const contractorRef = db.collection('contractors').doc(contractorId);
       await contractorRef.set(
         {
           name,
           businessName,
           greeting,
           logo: logoUrl,
-          personalizedLink: `https://claudetake.vercel.app/contractor/${uid}`,
+          personalizedLink: `https://claudetake.vercel.app/contractor/${contractorId}`,
         },
         { merge: true }
       );
