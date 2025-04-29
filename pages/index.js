@@ -2,7 +2,7 @@ import Head from 'next/head';
 import Header from '../components/Header';
 import ChatbotChat from '../components/ChatbotChat';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 
 export default function Home() {
   console.log('Rendering Home component');
@@ -27,19 +27,19 @@ export default function Home() {
           </button>
           <button
             className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 mt-4"
-            onClick={() => console.log('GetQuote button clicked')}
+            onClick={() => window.location.href = '/contractor/signup'}
           >
             GetQuote
           </button>
           <button
             className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 mt-4"
-            onClick={() => console.log('Dashboard button clicked')}
+            onClick={() => window.location.href = '/contractor/dashboard'}
           >
             Dashboard
           </button>
           <button
             className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 mt-4"
-            onClick={() => console.log('Sign out button clicked')}
+            onClick={() => signOut()}
           >
             Sign out
           </button>
