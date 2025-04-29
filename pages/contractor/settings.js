@@ -34,8 +34,10 @@ export default function ContractorSettings() {
         throw new Error(errorData.error || 'Failed to save settings');
       }
 
-      alert('Settings saved successfully!');
+      // Redirect to contractor dashboard after successful save
+      router.push('/contractor/dashboard');
     } catch (err) {
+      console.error('Error saving settings:', err);
       setError(err.message);
     } finally {
       setLoading(false);

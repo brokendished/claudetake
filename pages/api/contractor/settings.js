@@ -1,8 +1,16 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { initAdmin } from '../../../libs/firebaseAdmin';
+import formidable from 'formidable';
+import { uploadFileToStorage } from '../../../libs/firebaseStorage'; // Assume this helper uploads files to Firebase Storage
 
 initAdmin();
 const db = getFirestore();
+
+export const config = {
+  api: {
+    bodyParser: false, // Disable body parsing for file uploads
+  },
+};
 
 export default async function handler(req, res) {
   try {
@@ -10,24 +18,39 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { name, businessName } = req.body;
-    const { uid } = req.headers; // Assume UID is passed in headers for simplicity
+    const form = new formidable.IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error('Error parsing form:', err);
+        return res.status(400).json({ error: 'Invalid form data' });
+      }
 
-    if (!uid || !name || !businessName) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+      const { name, businessName, greeting } = fields;
+      const { uid } = req.headers; // Assume UID is passed in headers for simplicity
 
-    const contractorRef = db.collection('contractors').doc(uid);
-    await contractorRef.set(
-      {
-        name,
-        businessName,
-        personalizedLink: `https://claudetake.vercel.app/contractor/${uid}`,
-      },
-      { merge: true }
-    );
+      if (!uid || !name || !businessName || !greeting) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
 
-    return res.status(200).json({ success: true });
+      let logoUrl = null;
+      if (files.logo) {
+        logoUrl = await uploadFileToStorage(files.logo, `contractors/${uid}/logo`);
+      }
+
+      const contractorRef = db.collection('contractors').doc(uid);
+      await contractorRef.set(
+        {
+          name,
+          businessName,
+          greeting,
+          logo: logoUrl,
+          personalizedLink: `https://claudetake.vercel.app/contractor/${uid}`,
+        },
+        { merge: true }
+      );
+
+      return res.status(200).json({ success: true });
+    });
   } catch (error) {
     console.error('Error saving contractor settings:', error);
     return res.status(500).json({ error: 'Internal Server Error', message: error.message });
