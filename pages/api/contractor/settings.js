@@ -1,7 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { initAdmin } from '../../../libs/firebaseAdmin';
-import formidable from 'formidable'; // Ensure this package is installed
-import { uploadFileToStorage } from '../../../libs/firebaseStorage'; // Ensure this file exists
+import formidable from 'formidable';
+import { uploadFileToStorage } from '../../../libs/firebaseStorage'; // Ensure this path is correct
 
 // Initialize Firebase Admin
 initAdmin();

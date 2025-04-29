@@ -16,7 +16,7 @@
     "@google-cloud/vision": "^3.0.0",
     "googleapis": "^133.0.0",
     "resend": "^4.2.0",
-    "firebase": "^9.6.1",
+    "firebase": "^9.0.0",
     "firebase-admin": "^12.7.0",
     "webrtc-adapter": "^9.0.1",
     "openai": "^4.0.0",
