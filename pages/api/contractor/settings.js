@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       }
 
       const { name, businessName, greeting } = fields;
-      const { contractorId } = req.headers; // Assume contractorId is passed in headers for simplicity
+      const { contractorId } = req.headers; // Use contractorId consistently
 
       if (!contractorId || !name || !businessName || !greeting) {
         return res.status(400).json({ error: 'Missing required fields' });

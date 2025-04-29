@@ -1,7 +1,7 @@
 import { db } from '../../../firebase';
 
 export default async function handler(req, res) {
-  const { contractorId } = req.query;
+  const { contractorId } = req.query; // Use contractorId consistently
 
   try {
     const contractorRef = db.collection('contractors').doc(contractorId);
