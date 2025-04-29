@@ -970,8 +970,7 @@ const ensureFirebaseAuth = useCallback(async () => {
   }, [role]);
 
   return (
-    <div>
-      <div className="flex justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4"></div>
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 px-4">
       <div className="flex flex-col w-full max-w-[600px] pt-6 pb-4 bg-white rounded-lg shadow-md">
         {!session?.user?.email && (
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-2 mb-2 rounded">
@@ -997,51 +996,10 @@ const ensureFirebaseAuth = useCallback(async () => {
                   className="mt-2 rounded-md max-w-[80%] border border-gray-300"
                 />
               )}
-              {msg.suggestions && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {msg.suggestions.map((s, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => sendMessage(s)}
-                      className="px-3 py-1 bg-white border border-blue-500 text-blue-500 text-xs rounded-full hover:bg-blue-500 hover:text-white transition"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
           <div ref={chatRef} />
         </div>
-
-        {live && stream && (
-          <div className="bg-black p-2 rounded-xl shadow-md text-white">
-            <video ref={videoRef} autoPlay muted playsInline className="w-full rounded-md" />
-            <p className="text-xs text-center mt-2">🎥 You're live — capturing video/audio</p>
-            <div className="flex justify-between mt-2 gap-2">
-              <button
-                onClick={() => captureAndAnalyze()}
-                className="flex-1 py-1 bg-white text-black rounded-md text-sm"
-                disabled={isWaitingForResponse || loadingStates.analyzingImage}
-              >
-                {isWaitingForResponse || loadingStates.analyzingImage ? '⏳ Processing...' : '📸 Snap'}
-              </button>
-              <button
-                onClick={switchCamera}
-                className="py-1 px-2 bg-gray-700 text-white rounded-md text-sm"
-              >
-                🔄 Switch
-              </button>
-              <button
-                onClick={stopLiveChat}
-                className="flex-1 py-1 bg-red-500 text-white rounded-md text-sm"
-              >
-                ✖️ Stop
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="flex gap-2 items-center bg-white rounded-full p-2 shadow-md border border-gray-200">
           <input
@@ -1084,7 +1042,7 @@ const ensureFirebaseAuth = useCallback(async () => {
     <button
       onClick={() => fileInputRef.current?.click()}
       className="text-sm bg-black text-white rounded-full px-3 py-1 shadow hover:bg-gray-800"
-    >
+    ></button>
      📷 Add Photo
           </button>
           {session?.user?.email && !quoteRef.current && (
