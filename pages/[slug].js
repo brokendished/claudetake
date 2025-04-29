@@ -111,36 +111,25 @@ export default function PublicQuote({ contractor }) {
 // Server-side fetch—securely loads the contractor’s settings
 export async function getServerSideProps({ params }) {
   try {
-    // Initialize Admin SDK once
-    if (!getApps().length) {
-      initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      })
-    }
-
-    const db = getFirestore()
+    const db = getFirestore();
     const qs = await db
       .collection('contractors')
       .where('linkSlug', '==', params.slug)
       .limit(1)
-      .get()
+      .get();
 
     if (qs.empty) {
-      return { notFound: true }
+      return { notFound: true };
     }
 
-    const doc = qs.docs[0]
+    const doc = qs.docs[0];
     return {
       props: {
         contractor: { contractorId: doc.id, ...doc.data() }, // Use contractorId consistently
       },
-    }
+    };
   } catch (err) {
-    console.error('🚨 [slug] getServerSideProps error:', err)
-    return { notFound: true }
+    console.error('🚨 [slug] getServerSideProps error:', err);
+    return { notFound: true };
   }
 }

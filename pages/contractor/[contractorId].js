@@ -4,7 +4,7 @@ import ChatbotChat from '../../components/ChatbotChat';
 
 export default function ContractorChatPage() {
   const router = useRouter();
-  const { contractorId } = router.query; // Use contractorId consistently
+  const { contractorId } = router.query; // Updated from uid to contractorId
   const [contractorData, setContractorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,7 +14,7 @@ export default function ContractorChatPage() {
 
     const fetchContractorData = async () => {
       try {
-        const res = await fetch(`/api/contractor/${contractorId}`);
+        const res = await fetch(`/api/contractor/${contractorId}`); // Updated from uid to contractorId
         if (!res.ok) {
           throw new Error('Failed to fetch contractor data');
         }
@@ -28,7 +28,7 @@ export default function ContractorChatPage() {
     };
 
     fetchContractorData();
-  }, [contractorId]);
+  }, [contractorId]); // Updated from uid to contractorId
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
