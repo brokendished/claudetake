@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
       // Extract fields and contractorId from headers
       const { name, businessName, greeting } = fields;
-      const { contractorId } = req.headers;
+      const { contractorId } = req.headers; // Use contractorId consistently
 
       // Validate required fields
       if (!contractorId || !name || !businessName || !greeting) {

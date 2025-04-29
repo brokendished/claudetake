@@ -21,7 +21,7 @@ export default function PublicQuote({ contractor }) {
     const idToken = await auth.currentUser.getIdToken()
 
     // 2) Send the form data + token
-    const res = await fetch(`/api/contractor/${contractor.uid}/quotes`, {
+    const res = await fetch(`/api/contractor/${contractor.contractorId}/quotes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ export async function getServerSideProps({ params }) {
     const doc = qs.docs[0]
     return {
       props: {
-        contractor: { uid: doc.id, ...doc.data() },
+        contractor: { contractorId: doc.id, ...doc.data() },
       },
     }
   } catch (err) {

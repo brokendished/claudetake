@@ -1,19 +1,31 @@
-import { db } from '../../../firebase';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initAdmin } from '../../../libs/firebaseAdmin';
+
+initAdmin();
+const db = getFirestore();
 
 export default async function handler(req, res) {
-  const { contractorId } = req.query; // Use contractorId consistently
-
   try {
-    const contractorRef = db.collection('contractors').doc(contractorId);
-    const doc = await contractorRef.get();
-
-    if (!doc.exists) {
-      res.status(404).json({ error: 'Contractor not found' });
-      return;
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    res.status(200).json(doc.data());
+    const { contractorId } = req.query; // Use contractorId consistently
+
+    if (!contractorId) {
+      return res.status(400).json({ error: 'Missing contractor ID' });
+    }
+
+    const contractorRef = db.collection('contractors').doc(contractorId);
+    const contractorDoc = await contractorRef.get();
+
+    if (!contractorDoc.exists) {
+      return res.status(404).json({ error: 'Contractor not found' });
+    }
+
+    return res.status(200).json(contractorDoc.data());
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch contractor' });
+    console.error('Error fetching contractor data:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 }
