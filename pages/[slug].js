@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { auth } from '../libs/firebaseClient'
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
 
 export default function PublicQuote({ contractor }) {
   const [form, setForm] = useState({
@@ -110,26 +108,35 @@ export default function PublicQuote({ contractor }) {
 
 // Server-side fetch—securely loads the contractor’s settings
 export async function getServerSideProps({ params }) {
-  try {
-    const db = getFirestore();
-    const qs = await db
-      .collection('contractors')
-      .where('linkSlug', '==', params.slug)
-      .limit(1)
-      .get();
+  // Move firebase-admin logic here
+  const { getFirestore } = await import('firebase-admin/firestore');
+  const { initializeApp, cert, getApps } = await import('firebase-admin/app');
 
-    if (qs.empty) {
-      return { notFound: true };
-    }
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
 
-    const doc = qs.docs[0];
-    return {
-      props: {
-        contractor: { contractorId: doc.id, ...doc.data() }, // Ensure contractorId is used
-      },
-    };
-  } catch (err) {
-    console.error('🚨 [slug] getServerSideProps error:', err);
+  const db = getFirestore();
+  const qs = await db
+    .collection('contractors')
+    .where('linkSlug', '==', params.slug)
+    .limit(1)
+    .get();
+
+  if (qs.empty) {
     return { notFound: true };
   }
+
+  const doc = qs.docs[0];
+  return {
+    props: {
+      contractor: { contractorId: doc.id, ...doc.data() },
+    },
+  };
 }
