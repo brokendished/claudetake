@@ -39,11 +39,12 @@ export default function ChatbotChat({ role }) {
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error: ${res.status}`);
+        const errorText = await res.text(); // Read the response as text
+        console.error('Error response from server:', errorText);
+        throw new Error(`Server error: ${res.status}`);
       }
 
-      const data = await res.json();
+      const data = await res.json(); // Parse JSON only if the response is OK
       const botMessage = { role: 'assistant', content: data.reply };
 
       setMessages((prev) => [...prev, botMessage]);
