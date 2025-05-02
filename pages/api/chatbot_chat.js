@@ -52,33 +52,43 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { message } = req.body;
+    const { message, contractorId } = req.body;
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
     const db = getDb();
 
-    // Store the incoming message
-    await db.collection('messages').add({
-      content: message,
-      timestamp: new Date(),
-      type: 'incoming'
-    });
+    // Get contractor data if available
+    let contractorContext = '';
+    if (contractorId) {
+      const contractorDoc = await db.collection('contractors').doc(contractorId).get();
+      if (contractorDoc.exists) {
+        const data = contractorDoc.data();
+        contractorContext = `You are a chatbot for ${data.businessName}. You specialize in ${data.industry || 'their industry'}. `;
+      }
+    }
 
-    // Get chatbot response
+    // Get chatbot response with contractor context
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }],
+      messages: [
+        { 
+          role: "system", 
+          content: `${contractorContext}Provide helpful, concise responses focused on contractor services and quote requests.`
+        },
+        { role: "user", content: message }
+      ],
     });
 
     const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process that.';
 
-    // Store the response
-    await db.collection('messages').add({
-      content: reply,
-      timestamp: new Date(),
-      type: 'outgoing'
+    // Store the conversation
+    await db.collection('chatMessages').add({
+      contractorId,
+      message,
+      reply,
+      timestamp: new Date()
     });
 
     return res.status(200).json({ reply });
