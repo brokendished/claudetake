@@ -1,7 +1,7 @@
 // pages/api/chatbot_chat.js
 import OpenAI from 'openai';
 import analyzeImage from '../../libs/server/analyzeScreenshot';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore } from '../../../libs/firebaseAdmin'; // Correct the import path
 import { initAdmin } from '../../../libs/firebaseAdmin'; // Ensure this is the correct import
 
 initAdmin(); // Ensure Firebase Admin is initialized
