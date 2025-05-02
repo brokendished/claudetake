@@ -1,8 +1,7 @@
 // pages/api/chatbot_chat.js
 import OpenAI from 'openai';
 import analyzeImage from '../../libs/server/analyzeScreenshot';
-import { getFirestore } from '../../../libs/firebaseAdmin'; // Correct the import path
-import { initAdmin } from '../../../libs/firebaseAdmin'; // Ensure this is the correct import
+import { getFirestore, initAdmin } from '../../../libs/firebaseAdmin'; // Correct the import path
 
 initAdmin(); // Ensure Firebase Admin is initialized
 const db = getFirestore(); // Ensure Firestore is initialized correctly
@@ -62,6 +61,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' }); // Ensure JSON response
     }
 
+    const db = getFirestore();
     const chatbotResponse = `You said: ${message}`; // Example chatbot logic
 
     // Save the message to Firestore (if needed)
