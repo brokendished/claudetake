@@ -160,3 +160,41 @@
 .liveButton:hover {
   background: #059669;
 }
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.photoButton {
+  background-color: #10b981;
+  color: white;
+}
+
+.photoButton:hover {
+  background-color: #059669;
+}
+
+.liveButton {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.liveButton:hover {
+  background-color: #2563eb;
+}
+
+.saveButton {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.saveButton:hover {
+  background-color: #7c3aed;
+}
