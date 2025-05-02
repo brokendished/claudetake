@@ -108,7 +108,7 @@ export default function PublicQuote({ contractor }) {
 
 // Server-side fetch—securely loads the contractor’s settings
 export async function getServerSideProps({ params }) {
-  const { getFirestore, initAdmin } = await import('../../../libs/firebaseAdmin');
+  const { getFirestore, initAdmin } = await import('../libs/firebaseAdmin'); // Corrected import path
   initAdmin();
 
   const db = getFirestore();
