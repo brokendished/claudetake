@@ -136,102 +136,127 @@ export default function ChatbotChat({ role, contractorData }) {
           </div>
         )}
 
-        {/* Chat Messages */}
         <div className="flex flex-col gap-4 flex-1 mb-4 overflow-y-auto px-4">
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`px-4 py-2 rounded-lg text-sm animate-bounceChat ${
+              className={`px-4 py-3 rounded-lg text-sm whitespace-pre-wrap max-w-[85%] animate-fade ${
                 msg.role === 'assistant'
-                  ? 'bg-gray-100 text-gray-800 self-start'
+                  ? 'bg-gray-100 text-gray-800 self-start shadow'
                   : 'bg-blue-100 text-blue-900 self-end'
               }`}
             >
               {msg.content}
+              {msg.image && (
+                <img
+                  src={msg.image}
+                  alt="Snapshot"
+                  className="mt-2 rounded-md max-w-[80%] border border-gray-300"
+                />
+              )}
             </div>
           ))}
           <div ref={chatRef} />
         </div>
 
-        {/* Live Video Section */}
-        {showLiveChat && (
+        {live && stream && (
           <div className="bg-black p-2 rounded-xl shadow-md text-white">
-            <LiveChat
-              onMessage={(msg) => {
-                setMessages(prev => [...prev, msg]);
-              }}
-            />
+            <video ref={videoRef} autoPlay muted playsInline className="w-full rounded-md" />
+            <p className="text-xs text-center mt-2">🎥 Live analysis in progress...</p>
+            <div className="flex justify-between mt-2 gap-2">
+              <button
+                onClick={captureAndAnalyze}
+                className="flex-1 py-1 bg-white text-black rounded-md text-sm"
+                disabled={isWaitingForResponse || loadingStates.analyzingImage}
+              >
+                {isWaitingForResponse || loadingStates.analyzingImage ? '⏳ Processing...' : '📸 Snap'}
+              </button>
+              <button
+                onClick={switchCamera}
+                className="py-1 px-2 bg-gray-700 text-white rounded-md text-sm"
+              >
+                🔄 Switch
+              </button>
+              <button
+                onClick={stopLiveChat}
+                className="flex-1 py-1 bg-red-500 text-white rounded-md text-sm"
+              >
+                ✖️ Stop
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="flex gap-2 items-center bg-white rounded-full p-2 shadow-md border border-gray-200">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !loading) sendMessage(input);
-            }}
-            placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
-            className={`px-4 py-2 rounded-lg text-white transition-colors ${
-              loading || !input.trim()
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {loading ? 'Sending...' : 'Send'}
-          </button>
-        </div>
-
-        {/* Action Buttons */}
-        {!showLiveChat && (
-          <div className="mt-3 flex justify-center px-4 gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
+        <div className="border-t pt-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading) sendMessage(input);
+              }}
+              placeholder="Type your message..."
+              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={loading}
-              className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
-            >
-              📷 Take Photo
-            </button>
+            />
             <button
-              onClick={() => setShowLiveChat(prev => !prev)}
-              className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-color</button>
-              {showLiveChat ? '❌ Stop Live' : '🎥 Start Live'}
-            </button>
-            <button
-              onClick={() => {
-                // Add your save quote functionality here
-                setMessages(prev => [...prev, {
-                  role: 'assistant',
-                  content: 'Quote saved successfully! We will contact you shortly.'
-                }]);
-              }}
-              className="px-4 py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim()}
+              className={`px-4 py-2 rounded-lg text-white transition-colors ${
+                loading || !input.trim()
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              💾 Save Quote
+              {loading ? 'Sending...' : 'Send'}
             </button>
           </div>
-        )}
 
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          ref={fileInputRef}
-          onChange={handlePhotoUpload}
-          className="hidden"
-        />
+          {!live && (
+            <div className="mt-3 flex justify-center px-4 gap-2">
+              <button
+                onClick={startLiveChat}
+                className="text-sm bg-black text-white rounded-full px-3 py-1 shadow hover:bg-gray-800"
+              >
+                🎥 Start Live Chat
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-sm bg-black text-white rounded-full px-3 py-1 shadow hover:bg-gray-800"
+              >
+                📷 Add Photo
+              </button>
+              {session?.user?.email && !quoteRef.current && (
+                <button
+                  onClick={saveFinalQuote}
+                  className="text-sm bg-green-600 text-white rounded-full px-3 py-1 shadow hover:bg-green-700"
+                  disabled={quoteSaved || loadingStates.savingQuote}
+                >
+                  {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
+                </button>
+              )}
+              {session?.user?.email && (
+                <button
+                  onClick={submitQuote}
+                  className="text-sm bg-blue-600 text-white rounded-full px-3 py-1 shadow hover:bg-blue-700"
+                  disabled={loadingStates.submittingQuote || (!quoteRef.current && loadingStates.savingQuote)}
+                >
+                  {loadingStates.submittingQuote ? '⏳ Submitting...' : '📤 Submit Quote'}
+                </button>
+              )}
+            </div>
+          )}
 
-        {error && (
-          <p className="mt-2 text-red-500 text-sm">{error}</p>
-        )}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            ref={fileInputRef}
+            onChange={handleImportPhoto}
+            className="hidden"
+          />
+        </div>
       </div>
     </div>
   );
