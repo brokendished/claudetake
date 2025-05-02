@@ -31,7 +31,7 @@ export default function ChatbotChat({ role, contractorData }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: input,
-          contractorId: contractorData?.contractorId
+          contractorId: contractorData?.contractorId || null
         }),
       });
 
@@ -50,7 +50,7 @@ export default function ChatbotChat({ role, contractorData }) {
       setInput('');
     } catch (err) {
       console.error('Error sending message:', err);
-      setError(err.message || 'Failed to send message');
+      setError('Failed to send message. Please try again.');
     } finally {
       setLoading(false);
       chatRef.current?.scrollIntoView({ behavior: 'smooth' });

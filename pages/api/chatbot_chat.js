@@ -83,13 +83,15 @@ export default async function handler(req, res) {
 
     const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process that.';
 
-    // Store the conversation
-    await db.collection('chatMessages').add({
-      contractorId,
-      message,
-      reply,
-      timestamp: new Date()
-    });
+    // Store the conversation only if we have a contractorId
+    if (contractorId) {
+      await db.collection('chatMessages').add({
+        contractorId,
+        message,
+        reply,
+        timestamp: new Date()
+      });
+    }
 
     return res.status(200).json({ reply });
   } catch (error) {
