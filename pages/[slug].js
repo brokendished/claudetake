@@ -1,7 +1,5 @@
-// pages/[slug].js
-
-import { useState } from 'react'
-import { auth } from '../libs/firebaseClient'
+import { useState } from 'react';
+import { auth } from '../libs/firebaseClient';
 
 export default function PublicQuote({ contractor }) {
   const [form, setForm] = useState({
