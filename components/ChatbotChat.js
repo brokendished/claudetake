@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function ChatbotChat({ role }) {
   const [messages, setMessages] = useState([]);
@@ -7,7 +7,13 @@ export default function ChatbotChat({ role }) {
   const [error, setError] = useState(null);
   const chatRef = useRef(null);
 
+  useEffect(() => {
+    chatRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   async function sendMessage(input) {
+    if (!input.trim()) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -19,17 +25,21 @@ export default function ChatbotChat({ role }) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text(); // Read the response as text
-        console.error('Error response from server:', errorText);
-        throw new Error(`Server error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `Error: ${response.status}`);
       }
 
-      const data = await response.json(); // Parse JSON only if the response is OK
-      setMessages((prev) => [...prev, { role: 'user', content: input }, { role: 'assistant', content: data.reply }]);
+      const data = await response.json();
+      
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', content: input },
+        { role: 'assistant', content: data.reply }
+      ]);
       setInput('');
     } catch (err) {
       console.error('Error sending message:', err);
-      setError('Failed to send message. Please try again.');
+      setError(err.message || 'Failed to send message');
     } finally {
       setLoading(false);
       chatRef.current?.scrollIntoView({ behavior: 'smooth' });

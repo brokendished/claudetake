@@ -1,20 +1,17 @@
 // pages/api/chatbot_chat.js
+import { getDb } from '../../libs/firebaseAdmin';
 import OpenAI from 'openai';
 import analyzeImage from '../../libs/server/analyzeScreenshot';
-import { getFirestore, initAdmin } from '../../libs/firebaseAdmin'; // Corrected import path
+import { getFirestore } from 'firebase-admin/firestore';
+import { initAdmin } from '../../libs/firebaseAdmin';
 
 initAdmin(); // Ensure Firebase Admin is initialized
 const db = getFirestore(); // Ensure Firestore is initialized correctly
 
-// Create OpenAI client instance
-let openaiClient = null;
-
-function getOpenAIClient() {
-  if (!openaiClient && process.env.OPENAI_API_KEY) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return openaiClient;
-}
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /**
  * Rate limiting state
@@ -52,28 +49,44 @@ function checkRateLimit(ip) {
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' }); // Ensure JSON response
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { message } = req.body;
-
     if (!message) {
-      return res.status(400).json({ error: 'Message is required' }); // Ensure JSON response
+      return res.status(400).json({ error: 'Message is required' });
     }
 
-    const db = getFirestore();
-    const chatbotResponse = `You said: ${message}`; // Example chatbot logic
+    const db = getDb();
 
-    // Save the message to Firestore (if needed)
-    await db.collection('chatbotMessages').add({
-      message,
-      response: chatbotResponse,
+    // Store the incoming message
+    await db.collection('messages').add({
+      content: message,
       timestamp: new Date(),
+      type: 'incoming'
     });
 
-    return res.status(200).json({ reply: chatbotResponse });
+    // Get chatbot response
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }],
+    });
+
+    const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process that.';
+
+    // Store the response
+    await db.collection('messages').add({
+      content: reply,
+      timestamp: new Date(),
+      type: 'outgoing'
+    });
+
+    return res.status(200).json({ reply });
   } catch (error) {
-    console.error('Error in /api/chatbot_chat:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Chatbot error:', error);
+    return res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: error.message 
+    });
   }
 }
