@@ -207,14 +207,14 @@ export default function ChatbotChat({ contractorId }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Chat messages */}
+      {/* Messages section */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, i) => (
           <div
             key={i}
             className={`p-3 rounded-lg max-w-[80%] ${
               msg.role === 'assistant' 
-                ? 'bg-gray-100 self-start' 
+                ? 'bg-gray-100 self-start shadow'
                 : 'bg-blue-100 self-end'
             }`}
           >
@@ -226,7 +226,6 @@ export default function ChatbotChat({ contractorId }) {
                 className="mt-2 rounded max-w-full"
               />
             )}
-            {/* Add suggestion buttons */}
             {msg.suggestions && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {msg.suggestions.map((suggestion, idx) => (
@@ -245,17 +244,31 @@ export default function ChatbotChat({ contractorId }) {
         <div ref={chatRef} />
       </div>
 
-      {/* Add Live Chat component if enabled */}
-      {live && (
-        <><div className="p-4 bg-black rounded-lg mb-4"></div><LiveChat onMessage={(msg) => {
-          setMessages(prev => [...prev, msg]);
-        } } /></>
+      {/* Live chat section */}
+      {live && stream && (
+        <div className="bg-black p-2 rounded-xl shadow-md text-white mb-4">
+          <video ref={videoRef} autoPlay muted playsInline className="w-full rounded-md" />
+          <p className="text-xs text-center mt-2">🎥 Live analysis in progress...</p>
+          <div className="flex justify-between mt-2 gap-2">
+            <button
+              onClick={captureAndAnalyze}
+              disabled={isWaitingForResponse}
+              className="flex-1 py-1 bg-white text-black rounded-md text-sm"
+            >
+              {isWaitingForResponse ? '⏳ Processing...' : '📸 Snap'}
+            </button>
+            <button
+              onClick={stopLiveChat}
+              className="flex-1 py-1 bg-red-500 text-white rounded-md text-sm"
+            >
+              ✖️ Stop
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Input area */}
+      {/* Action buttons */}
       <div className="border-t p-4 space-y-4">
-        {/* Action buttons */}
         <div className="flex gap-2 flex-wrap">
           <input
             type="file"
@@ -267,30 +280,30 @@ export default function ChatbotChat({ contractorId }) {
           
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={loadingStates.analyzingImage}
+            disabled={loading}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-          ></button>
-            {loadingStates.analyzingImage ? '📸 Processing...' : '📷 Upload Photo'}
+          >
+            {loading ? '📸 Processing...' : '📷 Upload Photo'}
           </button>
-          
+
           <button
-            onClick={startLiveChat}
+            onClick={live ? stopLiveChat : startLiveChat}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          ></button>
+          >
             {live ? '❌ Stop Live' : '🎥 Start Live'}
           </button>
 
-          {session?.user?.email && (
+          {session?.user?.email && !quoteSaved && (
             <button
               onClick={saveFinalQuote}
-              disabled={loadingStates.savingQuote || quoteSaved}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-            ></button>
-              {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              💾 Save Quote
             </button>
           )}
         </div>
 
+        {/* Input field */}
         <div className="flex gap-2">
           <input
             type="text"
@@ -304,9 +317,9 @@ export default function ChatbotChat({ contractorId }) {
           <button
             onClick={() => sendMessage(input)}
             disabled={loading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-400"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
           >
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? '⏳ Sending...' : 'Send'}
           </button>
         </div>
       </div>
