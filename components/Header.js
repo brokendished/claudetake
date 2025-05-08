@@ -8,7 +8,7 @@ export default function Header() {
 
   return (
     <header className="w-full bg-black text-white shadow-md py-4 px-6 flex items-center justify-between">
-      {/* Left (empty for spacing or use later) */}
+      {/* Left side */}
       <div className="w-1/3" />
 
       {/* Center: Logo */}
@@ -20,28 +20,36 @@ export default function Header() {
 
       {/* Right: Auth / Dashboard */}
       <div className="w-1/3 flex justify-end items-center gap-3">
-        {session?.user && (
-          <Link
-            href="/dashboard"
-            className="bg-white text-black px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition"
-          >
-            Dashboard
-          </Link>
-        )}
         {session?.user ? (
-          <button
-            onClick={() => signOut()}
-            className="text-sm hover:underline"
-          >
-            Sign out
-          </button>
+          <>
+            <Link
+              href="/dashboard"
+              className="bg-white text-black px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition"
+            >
+              Dashboard
+            </Link>
+            <button
+              onClick={() => signOut()}
+              className="text-sm hover:underline"
+            >
+              Sign out
+            </button>
+          </>
         ) : (
-          <button
-            onClick={() => signIn('google')}
-            className="text-sm hover:underline"
-          >
-            Sign in
-          </button>
+          <>
+            <Link
+              href="/contractor/signup"
+              className="bg-blue-600 text-white px-3 py-1 text-sm rounded-full hover:bg-blue-700 transition"
+            >
+              For Contractors
+            </Link>
+            <button
+              onClick={() => signIn('google')}
+              className="text-sm hover:underline"
+            >
+              Sign in
+            </button>
+          </>
         )}
       </div>
     </header>
