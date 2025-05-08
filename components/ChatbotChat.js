@@ -325,4 +325,5 @@ export default function ChatbotChat({ contractorId }) {
       </div>
     </div>
   );
+}
 
