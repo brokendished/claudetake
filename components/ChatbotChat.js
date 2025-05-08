@@ -5,39 +5,146 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { v4 as uuidv4 } from 'uuid';
 import LiveChat from './livechat';
+import { useRouter } from 'next/router';
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import summarizeQuote from '../libs/summarizeQuote';
 
 export default function ChatbotChat({ contractorId }) {
-  // States
+  // Keep current states and add back useful ones
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(() => uuidv4());
-  const [imageUrls, setImageUrls] = useState([]);
-  const { data: session } = useSession();
-  const [showLiveChat, setShowLiveChat] = useState(false);
+  const [live, setLive] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [facingMode, setFacingMode] = useState('environment');
+  const [imageURLs, setImageURLs] = useState([]);
+  const [autoCapture, setAutoCapture] = useState(false);
+  const [lastQuestionTime, setLastQuestionTime] = useState(0);
   const [quoteSaved, setQuoteSaved] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
-    sendingMessage: false,
-    savingQuote: false,
-    analyzingImage: false,
-  });
-  
-  // Refs
-  const fileInputRef = useRef(null);
-  const videoRef = useRef(null);
-  const chatRef = useRef(null);
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
-  // Add useEffect for initial greeting
+  // Restore working refs
+  const sessionId = useRef(uuidv4());
+  const quoteRef = useRef(null);
+  const lastAskedRef = useRef('');
+  const router = useRouter();
+  const quoteIdFromURL = router.query.quoteId;
+  const contractorIdRef = useRef(router.query.ref || contractorId);
+
+  // Restore working speech recognition
+  const { listening } = useSpeechRecognition({
+    enabled: live,
+    onResult: (text) => {
+      if (text) {
+        sendMessage(text);
+        setIsWaitingForResponse(false);
+      }
+    },
+  });
+
+  // Add back initial greeting
   useEffect(() => {
-    // Set initial greeting message
     setMessages([{
       role: 'assistant',
-      content: contractorId 
-        ? 'Hi! I\'m here to help you get a quote. Feel free to describe your project, share a photo, or start a live video chat!'
-        : 'Welcome! I\'m here to help understand your project. You can describe the issue, upload photos, or start a live chat!',
-      suggestions: ['Upload a photo', 'Start live chat', 'Describe project']
+      content: `Hi! I'm here to help understand your project! Describe the issue, snap a photo, or go live.`,
+      suggestions: ['Plumbing', 'AC', 'Broken Appliance'],
     }]);
-  }, [contractorId]);
+  }, []);
+
+  // Restore working speak function
+  const speak = useCallback((text) => {
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.1;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
+  // Keep current sendMessage but add speech
+  const sendMessage = async (text) => {
+    if (!text.trim()) return;
+    
+    try {
+      setLoading(true);
+      setMessages(prev => [...prev, { role: 'user', content: text }]);
+      setInput('');
+      
+      const res = await fetch('/api/chatbot_chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          sessionId: sessionId.current,
+          contractorId: contractorIdRef.current
+        }),
+      });
+      
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      if (live) speak(data.reply);
+    } catch (err) {
+      console.error('Chat error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Restore working quote saving
+  const saveFinalQuote = async () => {
+    try {
+      const summary = await summarizeQuote(messages);
+      const docRef = await addDoc(collection(db, 'quotes'), {
+        sessionId: sessionId.current,
+        timestamp: serverTimestamp(),
+        name: session?.user?.name || '',
+        email: session?.user?.email || '',
+        images: imageURLs,
+        issue: summary,
+        contractorId: contractorIdRef.current,
+        status: 'pending'
+      });
+      quoteRef.current = docRef;
+      setQuoteSaved(true);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Quote saved successfully! We will contact you shortly.'
+      }]);
+    } catch (error) {
+      console.error('Failed to save quote:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Failed to save quote. Please try again.'
+      }]);
+    }
+  };
+
+  // Restore working live chat
+  const startLiveChat = async () => {
+    setLive(true);
+    setAutoCapture(true);
+    speak('OK, let\'s take a look!');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode },
+        audio: true,
+      });
+      setStream(stream);
+    } catch (err) {
+      console.error('Camera access failed:', err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Camera access failed. Please check your permissions.'
+      }]);
+    }
+  };
+
+  const stopLiveChat = () => {
+    setAutoCapture(false);
+    stream?.getTracks().forEach((track) => track.stop());
+    setStream(null);
+    setLive(false);
+  };
 
   // Handle file upload
   const handleImportPhoto = useCallback(async (event) => {
@@ -93,69 +200,6 @@ export default function ChatbotChat({ contractorId }) {
     }
   }, []);
 
-  // Send message
-  const sendMessage = async (text) => {
-    if (!text.trim()) return;
-    
-    try {
-      setLoading(true);
-      setMessages(prev => [...prev, { role: 'user', content: text }]);
-      setInput('');
-      
-      const res = await fetch('/api/chatbot_chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          sessionId,
-          contractorId
-        }),
-      });
-      
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-    } catch (err) {
-      console.error('Chat error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Save quote
-  const saveQuote = async () => {
-    if (!session?.user?.email) return;
-    
-    try {
-      setLoadingStates(prev => ({ ...prev, savingQuote: true }));
-      
-      const quoteData = {
-        messages,
-        imageUrls,
-        consumerId: session.user.uid,
-        contractorId,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      };
-      
-      const docRef = await addDoc(collection(db, 'quotes'), quoteData);
-      
-      setQuoteSaved(true);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Quote saved successfully! We will contact you shortly.'
-      }]);
-      
-    } catch (err) {
-      console.error('Error saving quote:', err);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Failed to save quote. Please try again.'
-      }]);
-    } finally {
-      setLoadingStates(prev => ({ ...prev, savingQuote: false }));
-    }
-  };
-
   // Scroll to bottom on new messages
   useEffect(() => {
     chatRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -202,11 +246,10 @@ export default function ChatbotChat({ contractorId }) {
       </div>
 
       {/* Add Live Chat component if enabled */}
-      {showLiveChat && (
-        <div className="p-4 bg-black rounded-lg mb-4">
-          <LiveChat onMessage={(msg) => {
-            setMessages(prev => [...prev, msg]);
-          }} />
+      {live && (
+        <><div className="p-4 bg-black rounded-lg mb-4"></div><LiveChat onMessage={(msg) => {
+          setMessages(prev => [...prev, msg]);
+        } } /></>
         </div>
       )}
 
@@ -226,23 +269,23 @@ export default function ChatbotChat({ contractorId }) {
             onClick={() => fileInputRef.current?.click()}
             disabled={loadingStates.analyzingImage}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-          >
+          ></button>
             {loadingStates.analyzingImage ? '📸 Processing...' : '📷 Upload Photo'}
           </button>
           
           <button
-            onClick={() => setShowLiveChat(prev => !prev)}
+            onClick={startLiveChat}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            {showLiveChat ? '❌ Stop Live' : '🎥 Start Live'}
+          ></button>
+            {live ? '❌ Stop Live' : '🎥 Start Live'}
           </button>
 
           {session?.user?.email && (
             <button
-              onClick={saveQuote}
+              onClick={saveFinalQuote}
               disabled={loadingStates.savingQuote || quoteSaved}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-            >
+            ></button>
               {quoteSaved ? '✓ Saved' : loadingStates.savingQuote ? '💾 Saving...' : '💾 Save Quote'}
             </button>
           )}
@@ -269,4 +312,4 @@ export default function ChatbotChat({ contractorId }) {
       </div>
     </div>
   );
-}
+
