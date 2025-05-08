@@ -31,6 +31,11 @@ export default function ChatbotChat({ contractorId }) {
   const quoteIdFromURL = router.query.quoteId;
   const contractorIdRef = useRef(router.query.ref || contractorId);
 
+  // Add missing ref
+  const chatRef = useRef(null);
+  const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   // Restore working speech recognition
   const { listening } = useSpeechRecognition({
     enabled: live,
