@@ -47,58 +47,61 @@ function checkRateLimit(ip) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
+    const { message, image, sessionId, contractorId } = req.body;
 
-    const { message, contractorId } = req.body;
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    const db = getDb();
-
-    // Get contractor data if available
+    // Get contractor context if available
     let contractorContext = '';
     if (contractorId) {
       const contractorDoc = await db.collection('contractors').doc(contractorId).get();
       if (contractorDoc.exists) {
         const data = contractorDoc.data();
-        contractorContext = `You are a chatbot for ${data.businessName}. You specialize in ${data.industry || 'their industry'}. `;
+        contractorContext = `You are representing ${data.businessName}. Industry: ${data.industry}. `;
       }
     }
 
-    // Get chatbot response with contractor context
+    // Process image if provided
+    let imageAnalysis = '';
+    if (image) {
+      const vision = require('@google-cloud/vision');
+      const client = new vision.ImageAnnotatorClient();
+      const [result] = await client.textDetection(Buffer.from(image.split(',')[1], 'base64'));
+      imageAnalysis = result.fullTextAnnotation?.text || '';
+    }
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
-        { 
-          role: "system", 
-          content: `${contractorContext}Provide helpful, concise responses focused on contractor services and quote requests.`
+        {
+          role: "system",
+          content: `${contractorContext}You are a professional, helpful assistant focused on gathering information for quotes and estimates.`
         },
-        { role: "user", content: message }
+        { 
+          role: "user", 
+          content: `${message}${imageAnalysis ? `\nImage Analysis: ${imageAnalysis}` : ''}`
+        }
       ],
     });
 
-    const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process that.';
+    const reply = completion.choices[0]?.message?.content;
 
-    // Store the conversation only if we have a contractorId
-    if (contractorId) {
-      await db.collection('chatMessages').add({
-        contractorId,
+    // Save to Firestore if we have a session
+    if (sessionId) {
+      await db.collection('chat_sessions').doc(sessionId).collection('messages').add({
         message,
         reply,
-        timestamp: new Date()
+        timestamp: new Date(),
+        image: image || null,
       });
     }
 
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Chatbot error:', error);
-    return res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: error.message 
-    });
+    return res.status(500).json({ error: error.message });
   }
 }
