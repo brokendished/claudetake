@@ -26,14 +26,30 @@ export default function ContractorSignup() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signIn('google', { 
+        callbackUrl: '/contractor/account-setup',
+        redirect: false 
+      });
+      
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.url) {
+        router.push(result.url);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 space-y-6">
         <h1 className="text-2xl font-bold text-center">Contractor Signup</h1>
         
-        {/* Google Sign In */}
         <button
-          onClick={() => signIn('google', { callbackUrl: '/contractor/account-setup' })}
+          onClick={handleGoogleSignIn}
           className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg shadow hover:bg-gray-50 flex items-center justify-center gap-2"
         >
           <img src="/google.svg" alt="Google" className="w-5 h-5" />
@@ -49,7 +65,6 @@ export default function ContractorSignup() {
           </div>
         </div>
 
-        {/* Email/Password Sign Up */}
         <form onSubmit={handleEmailSignup} className="space-y-4">
           <div>
             <input

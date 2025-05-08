@@ -48,9 +48,12 @@ export default NextAuth({
     error: '/auth/error'
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account }) {
+      return true; // Allow all sign-ins
+    },
+    async jwt({ token, user, account }) {
       if (user) {
-        token.role = user.role;
+        token.role = user.role || 'consumer'; // Default to consumer if no role specified
         token.uid = user.id;
       }
       return token;
