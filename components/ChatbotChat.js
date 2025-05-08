@@ -19,6 +19,7 @@ export default function ChatbotChat({ contractorId }) {
   const [loadingStates, setLoadingStates] = useState({
     sendingMessage: false,
     savingQuote: false,
+    analyzingImage: false,
   });
   
   // Refs
@@ -39,44 +40,58 @@ export default function ChatbotChat({ contractorId }) {
   }, [contractorId]);
 
   // Handle file upload
-  const handleFileUpload = async (file) => {
+  const handleImportPhoto = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     try {
-      setLoading(true);
+      setLoadingStates(prev => ({ ...prev, analyzingImage: true }));
       const reader = new FileReader();
       
       reader.onloadend = async () => {
-        const imageRef = ref(storage, `quotes/${sessionId}/${Date.now()}.jpg`);
-        await uploadString(imageRef, reader.result, 'data_url');
-        const url = await getDownloadURL(imageRef);
-        setImageUrls(prev => [...prev, url]);
-        
-        // Send to chatbot
-        const res = await fetch('/api/chatbot_chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: '[Image uploaded]',
-            image: reader.result,
-            sessionId,
-            contractorId
-          }),
-        });
-        
-        const data = await res.json();
-        setMessages(prev => [
-          ...prev,
-          { role: 'user', content: '[Image uploaded]', image: url },
-          { role: 'assistant', content: data.reply }
-        ]);
+        try {
+          // Upload to Firebase Storage
+          const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
+          await uploadString(imageRef, reader.result, 'data_url');
+          const url = await getDownloadURL(imageRef);
+
+          // Add message with image
+          setMessages(prev => [...prev, {
+            role: 'user',
+            content: '[Photo uploaded]',
+            image: url
+          }]);
+
+          // Send to analysis
+          const response = await fetch('/api/analyze-screenshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: reader.result }),
+          });
+
+          if (!response.ok) throw new Error('Failed to analyze image');
+          
+          const data = await response.json();
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: data.summary || 'I can help analyze what I see in this image.'
+          }]);
+        } catch (err) {
+          console.error('Error processing image:', err);
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Sorry, I had trouble processing that image. Could you describe what you see?'
+          }]);
+        }
       };
-      
+
       reader.readAsDataURL(file);
     } catch (err) {
       console.error('Upload error:', err);
     } finally {
-      setLoading(false);
+      setLoadingStates(prev => ({ ...prev, analyzingImage: false }));
     }
-  };
+  }, []);
 
   // Send message
   const sendMessage = async (text) => {
@@ -199,11 +214,20 @@ export default function ChatbotChat({ contractorId }) {
       <div className="border-t p-4 space-y-4">
         {/* Action buttons */}
         <div className="flex gap-2 flex-wrap">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImportPhoto}
+          />
+          
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            disabled={loadingStates.analyzingImage}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
           >
-            📷 Upload Photo
+            {loadingStates.analyzingImage ? '📸 Processing...' : '📷 Upload Photo'}
           </button>
           
           <button

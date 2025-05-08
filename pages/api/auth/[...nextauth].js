@@ -8,35 +8,59 @@ export default NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: "select_account"
+        }
+      }
     }),
     CredentialsProvider({
       name: 'Email & Password',
       credentials: {
-        email: { label: 'Email', type: 'text' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        const user = await verifyPassword(credentials.email, credentials.password);
-        if (user) {
-          return { id: user.uid, name: user.displayName, email: user.email };
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error('Email and password required');
+          }
+          
+          const user = await verifyPassword(credentials.email, credentials.password);
+          if (user) {
+            return {
+              id: user.uid,
+              email: user.email,
+              name: user.displayName,
+              role: 'contractor'
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error('Auth error:', error);
+          return null;
         }
-        return null;
-      },
-    }),
+      }
+    })
   ],
-  session: {
-    strategy: 'jwt',
+  pages: {
+    signIn: '/login',
+    error: '/auth/error'
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.role = user.role;
         token.uid = user.id;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.uid = token.uid;
+      if (token) {
+        session.user.role = token.role;
+        session.user.uid = token.uid;
+      }
       return session;
-    },
-  },
+    }
+  }
 });

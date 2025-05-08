@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { signIn } from 'next-auth/react';
+import { auth } from '../../libs/firebaseClient';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function ContractorSignup() {
   const [email, setEmail] = useState('');
@@ -8,25 +11,14 @@ export default function ContractorSignup() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSignup = async (e) => {
+  const handleEmailSignup = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch('/api/contractor/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to create account');
-      }
-
-      // Redirect to settings page after successful signup
-      router.push('/contractor/settings');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/contractor/account-setup');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,45 +28,62 @@ export default function ContractorSignup() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Contractor Signup</h1>
-      <form onSubmit={handleSignup} className="bg-white p-6 rounded shadow-md w-full max-w-md">
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-            required
-          />
-        </div>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-center">Contractor Signup</h1>
+        
+        {/* Google Sign In */}
         <button
-          type="submit"
-          className={`w-full py-2 px-4 rounded text-white ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-          disabled={loading}
+          onClick={() => signIn('google', { callbackUrl: '/contractor/account-setup' })}
+          className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg shadow hover:bg-gray-50 flex items-center justify-center gap-2"
         >
-          {loading ? 'Creating Account...' : 'Sign Up'}
+          <img src="/google.svg" alt="Google" className="w-5 h-5" />
+          Continue with Google
         </button>
-      </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or</span>
+          </div>
+        </div>
+
+        {/* Email/Password Sign Up */}
+        <form onSubmit={handleEmailSignup} className="space-y-4">
+          <div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </button>
+        </form>
+
+        {error && (
+          <p className="text-red-500 text-sm text-center">{error}</p>
+        )}
+      </div>
     </div>
   );
 }
