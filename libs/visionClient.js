@@ -7,13 +7,15 @@
  * @param {number} options.timeout - Request timeout in milliseconds
  * @param {boolean} options.retryOnFail - Whether to retry on failure
  * @param {number} options.maxRetries - Maximum number of retries
+ * @param {number} options.retryDelay - Delay between retries in milliseconds
  * @returns {Promise<string>} - Image analysis summary
  */
 export default async function analyzeImage(dataURL, options = {}) {
   const {
-    timeout = 10000,  // 10 second timeout default
+    timeout = 15000,  // Increased timeout to 15 seconds
     retryOnFail = true,
-    maxRetries = 2
+    maxRetries = 3,   // Increased max retries
+    retryDelay = 1000 // Add delay between retries
   } = options;
 
   // Validate input
@@ -52,12 +54,12 @@ export default async function analyzeImage(dataURL, options = {}) {
     } catch (error) {
       // Handle request timeout
       if (error.name === 'AbortError') {
-        throw new Error('Image analysis timed out');
+        throw new Error('Request timed out - please try again');
       }
       
       // Retry logic
       if (retryOnFail && retryCount < maxRetries) {
-        console.warn(`Vision API request failed, retrying (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
         return performRequest(retryCount + 1);
       }
       
@@ -71,7 +73,7 @@ export default async function analyzeImage(dataURL, options = {}) {
   } catch (error) {
     console.error('Image analysis failed:', error);
     // Return graceful fallback message
-    return 'Unable to analyze image at this time.';
+    return 'Sorry, I was unable to analyze the image. Please try again or describe what you see.';
   } finally {
     // Ensure timeout is cleared
     clearTimeout(timeoutId);

@@ -10,7 +10,7 @@ import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import summarizeQuote from '../libs/summarizeQuote';
 
 export default function ChatbotChat({ contractorId }) {
-  // Keep current states and add back useful ones
+  const { data: session, status } = useSession();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,6 @@ export default function ChatbotChat({ contractorId }) {
   const [quoteSaved, setQuoteSaved] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
-  // Restore working refs
   const sessionId = useRef(uuidv4());
   const quoteRef = useRef(null);
   const lastAskedRef = useRef('');
@@ -31,12 +30,10 @@ export default function ChatbotChat({ contractorId }) {
   const quoteIdFromURL = router.query.quoteId;
   const contractorIdRef = useRef(router.query.ref || contractorId);
 
-  // Add missing ref
   const chatRef = useRef(null);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Restore working speech recognition
   const { listening } = useSpeechRecognition({
     enabled: live,
     onResult: (text) => {
@@ -47,7 +44,6 @@ export default function ChatbotChat({ contractorId }) {
     },
   });
 
-  // Add back initial greeting
   useEffect(() => {
     setMessages([{
       role: 'assistant',
@@ -56,7 +52,6 @@ export default function ChatbotChat({ contractorId }) {
     }]);
   }, []);
 
-  // Restore working speak function
   const speak = useCallback((text) => {
     if (typeof window !== 'undefined') {
       window.speechSynthesis.cancel();
@@ -66,7 +61,6 @@ export default function ChatbotChat({ contractorId }) {
     }
   }, []);
 
-  // Keep current sendMessage but add speech
   const sendMessage = async (text) => {
     if (!text.trim()) return;
     
@@ -95,15 +89,22 @@ export default function ChatbotChat({ contractorId }) {
     }
   };
 
-  // Restore working quote saving
   const saveFinalQuote = async () => {
+    if (status !== 'authenticated') {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Please sign in to save your quote.'
+      }]);
+      return;
+    }
+
     try {
       const summary = await summarizeQuote(messages);
       const docRef = await addDoc(collection(db, 'quotes'), {
         sessionId: sessionId.current,
         timestamp: serverTimestamp(),
-        name: session?.user?.name || '',
-        email: session?.user?.email || '',
+        name: session.user?.name || '',
+        email: session.user?.email || '',
         images: imageURLs,
         issue: summary,
         contractorId: contractorIdRef.current,
@@ -124,7 +125,6 @@ export default function ChatbotChat({ contractorId }) {
     }
   };
 
-  // Restore working live chat
   const startLiveChat = async () => {
     setLive(true);
     setAutoCapture(true);
@@ -151,7 +151,6 @@ export default function ChatbotChat({ contractorId }) {
     setLive(false);
   };
 
-  // Handle file upload
   const handleImportPhoto = useCallback(async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -162,19 +161,16 @@ export default function ChatbotChat({ contractorId }) {
       
       reader.onloadend = async () => {
         try {
-          // Upload to Firebase Storage
           const imageRef = ref(storage, `screenshots/${Date.now()}.png`);
           await uploadString(imageRef, reader.result, 'data_url');
           const url = await getDownloadURL(imageRef);
 
-          // Add message with image
           setMessages(prev => [...prev, {
             role: 'user',
             content: '[Photo uploaded]',
             image: url
           }]);
 
-          // Send to analysis
           const response = await fetch('/api/analyze-screenshot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -205,14 +201,12 @@ export default function ChatbotChat({ contractorId }) {
     }
   }, []);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     chatRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages section */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, i) => (
           <div
@@ -249,7 +243,6 @@ export default function ChatbotChat({ contractorId }) {
         <div ref={chatRef} />
       </div>
 
-      {/* Live chat section */}
       {live && stream && (
         <div className="bg-black p-2 rounded-xl shadow-md text-white mb-4">
           <video ref={videoRef} autoPlay muted playsInline className="w-full rounded-md" />
@@ -272,7 +265,6 @@ export default function ChatbotChat({ contractorId }) {
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="border-t p-4 space-y-4">
         <div className="flex gap-2 flex-wrap">
           <input
@@ -298,7 +290,7 @@ export default function ChatbotChat({ contractorId }) {
             {live ? '❌ Stop Live' : '🎥 Start Live'}
           </button>
 
-          {session?.user?.email && !quoteSaved && (
+          {status === 'authenticated' && !quoteSaved && (
             <button
               onClick={saveFinalQuote}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -308,7 +300,6 @@ export default function ChatbotChat({ contractorId }) {
           )}
         </div>
 
-        {/* Input field */}
         <div className="flex gap-2">
           <input
             type="text"
