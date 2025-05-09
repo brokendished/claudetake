@@ -114,8 +114,18 @@ export default function ChatbotChat({ contractorId }) {
       setQuoteSaved(true);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Quote saved successfully! We will contact you shortly.'
+        content: 'Quote saved successfully! Redirecting to your quotes...'
       }]);
+      
+      // Add delay before redirect
+      setTimeout(() => {
+        if (contractorIdRef.current) {
+          router.push(`/contractor/${contractorIdRef.current}/quotes`);
+        } else {
+          router.push('/dashboard');
+        }
+      }, 2000);
+      
     } catch (error) {
       console.error('Failed to save quote:', error);
       setMessages(prev => [...prev, {
@@ -124,6 +134,19 @@ export default function ChatbotChat({ contractorId }) {
       }]);
     }
   };
+
+  // Add route handling for contractor links
+  const handleContractorLink = (contractorId) => {
+    if (!contractorId) return;
+    router.push(`/contractor/${contractorId}`);
+  };
+
+  useEffect(() => {
+    // Handle contractor ID from URL
+    if (router.query.contractorId) {
+      contractorIdRef.current = router.query.contractorId;
+    }
+  }, [router.query]);
 
   const startLiveChat = async () => {
     setLive(true);
