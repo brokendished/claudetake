@@ -22,6 +22,7 @@ export default function ChatbotChat({ contractorId }) {
   const [lastQuestionTime, setLastQuestionTime] = useState(0);
   const [quoteSaved, setQuoteSaved] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const sessionId = useRef(uuidv4());
   const quoteRef = useRef(null);
@@ -99,8 +100,10 @@ export default function ChatbotChat({ contractorId }) {
     }
 
     try {
+      setIsSaving(true);
       const summary = await summarizeQuote(messages);
-      const docRef = await addDoc(collection(db, 'quotes'), {
+      
+      const quoteData = {
         sessionId: sessionId.current,
         timestamp: serverTimestamp(),
         name: session.user?.name || '',
@@ -108,8 +111,14 @@ export default function ChatbotChat({ contractorId }) {
         images: imageURLs,
         issue: summary,
         contractorId: contractorIdRef.current,
-        status: 'pending'
-      });
+        status: 'pending',
+        userType: 'consumer', // Add user type
+        messages: messages, // Store full conversation
+      };
+
+      const quotesRef = collection(db, 'quotes');
+      const docRef = await addDoc(quotesRef, quoteData);
+
       quoteRef.current = docRef;
       setQuoteSaved(true);
       setMessages(prev => [...prev, {
@@ -119,19 +128,17 @@ export default function ChatbotChat({ contractorId }) {
       
       // Add delay before redirect
       setTimeout(() => {
-        if (contractorIdRef.current) {
-          router.push(`/contractor/${contractorIdRef.current}/quotes`);
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/quotes'); // Changed to correct consumer quotes path
       }, 2000);
       
     } catch (error) {
       console.error('Failed to save quote:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Failed to save quote. Please try again.'
+        content: `Failed to save quote: ${error.message}. Please try again.`
       }]);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -316,9 +323,10 @@ export default function ChatbotChat({ contractorId }) {
           {status === 'authenticated' && !quoteSaved && (
             <button
               onClick={saveFinalQuote}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              disabled={isSaving}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
-              💾 Save Quote
+              {isSaving ? '💾 Saving...' : '💾 Save Quote'}
             </button>
           )}
         </div>
