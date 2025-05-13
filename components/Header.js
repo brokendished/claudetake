@@ -8,12 +8,16 @@ export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const handleCustomerLogin = (e) => {
+  const handleCustomerLogin = async (e) => {
     e.preventDefault();
-    signIn('google', { 
-      callbackUrl: '/dashboard',
-      redirect: true
-    });
+    try {
+      await signIn('google', {
+        callbackUrl: '/dashboard',
+        redirect: false
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+    }
   };
 
   const handleContractorLogin = (e) => {
@@ -27,6 +31,12 @@ export default function Header() {
   const handleContractorSignup = (e) => {
     e.preventDefault();
     router.push('/contractor/signup');
+  };
+
+  const handleDashboardClick = (e) => {
+    e.preventDefault();
+    const path = session?.user?.role === 'contractor' ? '/contractor/dashboard' : '/dashboard';
+    router.push(path);
   };
 
   return (
@@ -64,12 +74,12 @@ export default function Header() {
             )}
             {session && (
               <>
-                <Link 
-                  href={session.user?.role === 'contractor' ? '/contractor/dashboard' : '/dashboard'}
+                <button 
+                  onClick={handleDashboardClick}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Dashboard
-                </Link>
+                </button>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
                   className="text-gray-700 hover:text-gray-900"

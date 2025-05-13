@@ -130,24 +130,25 @@ export default function ChatbotChat({ contractorId }) {
       setIsSaving(true);
       setLoadingStates(prev => ({ ...prev, savingQuote: true }));
       
-      console.log('Starting quote save process...'); // Debug log
-      
       // Validate messages
       if (!messages || messages.length === 0) {
         throw new Error('No messages to save');
       }
 
+      // Ensure contractorId exists
+      const currentContractorId = contractorIdRef.current || contractorId || null;
+      
       const summary = await summarizeQuote(messages);
-      console.log('Summary generated:', summary); // Debug log
       
       const quoteData = {
         sessionId: sessionId.current,
         timestamp: serverTimestamp(),
         name: session.user?.name || '',
         email: session.user?.email || '',
+        userId: session.user?.uid,
         images: imageURLs || [],
         issue: summary,
-        contractorId: contractorIdRef.current,
+        contractorId: currentContractorId,
         status: 'pending',
         userType: 'consumer',
         messages: messages.map(m => ({
@@ -157,11 +158,17 @@ export default function ChatbotChat({ contractorId }) {
         }))
       };
 
-      console.log('Quote data prepared:', quoteData); // Debug log
+      // Validate required fields
+      const requiredFields = ['sessionId', 'email', 'userId'];
+      for (const field of requiredFields) {
+        if (!quoteData[field]) {
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
 
       const quotesRef = collection(db, 'quotes');
       const docRef = await addDoc(quotesRef, quoteData);
-      console.log('Quote saved with ID:', docRef.id); // Debug log
+      console.log('Quote saved with ID:', docRef.id);
 
       quoteRef.current = docRef;
       setQuoteSaved(true);

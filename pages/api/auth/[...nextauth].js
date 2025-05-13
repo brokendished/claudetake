@@ -50,45 +50,33 @@ export default NextAuth({
   },
   callbacks: {
     async signIn({ user, account }) {
-      if (account.provider === 'google') {
-        user.role = 'consumer';
-      }
-      // Debug log
       console.log('SignIn callback:', { user, account });
       return true;
     },
     async jwt({ token, user, account }) {
       if (user) {
-        token.role = account?.provider === 'credentials' ? 'contractor' : 'consumer';
-        token.uid = user.id;
-        // Debug log
-        console.log('JWT callback:', { token, user, account });
+        token.role = account?.provider === 'google' ? 'consumer' : 'contractor';
+        token.uid = user.id || user.sub;
       }
       return token;
     },
     async session({ session, token }) {
       session.user.role = token.role;
       session.user.uid = token.uid;
-      // Debug log
-      console.log('Session callback:', { session, token });
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Debug log
-      console.log('Redirect callback:', { url, baseUrl });
-      
+      console.log('Redirect:', { url, baseUrl });
+      // For Google Auth (customer login)
+      if (url.includes('auth/signin') || url === baseUrl) {
+        return '/dashboard';
+      }
+      // For direct URLs
       if (url.startsWith(baseUrl)) {
-        // Keep same-origin URLs as-is
         return url;
       }
-      
-      // Default redirects based on role
-      if (url.includes('/contractor')) {
-        return `${baseUrl}/contractor/dashboard`;
-      }
-      
-      // Default to main dashboard
-      return `${baseUrl}/dashboard`;
+      // Default fallback
+      return baseUrl;
     }
   },
   debug: true // Enable debug messages

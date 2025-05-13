@@ -2,12 +2,20 @@ import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase-config'; // Use centralized Firebase instance
+import { useRouter } from 'next/router';
 
 export default function Dashboard() {
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated: () => signIn(),
   });
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
 
   const [quotes, setQuotes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
