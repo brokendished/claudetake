@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { defaultPrompts } from '../../config/defaultPrompts';
 
 export default function ContractorSettings() {
   const [name, setName] = useState('');
@@ -8,6 +9,7 @@ export default function ContractorSettings() {
   const [greeting, setGreeting] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [prompts, setPrompts] = useState(defaultPrompts);
   const router = useRouter();
 
   const handleSaveSettings = async (e) => {
@@ -23,6 +25,7 @@ export default function ContractorSettings() {
       if (logo) {
         formData.append('logo', logo);
       }
+      formData.append('prompts', JSON.stringify(prompts));
 
       const res = await fetch('/api/contractor/settings', {
         method: 'POST',
@@ -98,6 +101,40 @@ export default function ContractorSettings() {
             rows="3"
             placeholder="Enter your default greeting message"
           />
+        </div>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Chatbot Messages</h3>
+          {Object.entries(prompts).map(([key, value]) => (
+            <div key={key} className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">
+                {key.charAt(0).toUpperCase() + key.slice(1)} Message
+              </label>
+              {Array.isArray(value) ? (
+                <div className="space-y-2">
+                  {value.map((item, idx) => (
+                    <input
+                      key={idx}
+                      type="text"
+                      value={item}
+                      onChange={(e) => {
+                        const newValue = [...value];
+                        newValue[idx] = e.target.value;
+                        setPrompts(p => ({ ...p, [key]: newValue }));
+                      }}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <textarea
+                  value={value}
+                  onChange={(e) => setPrompts(p => ({ ...p, [key]: e.target.value }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                  rows={2}
+                />
+              )}
+            </div>
+          ))}
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         <button

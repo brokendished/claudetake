@@ -8,6 +8,7 @@ import LiveChat from './livechat';
 import { useRouter } from 'next/router';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import summarizeQuote from '../libs/summarizeQuote';
+import { defaultPrompts } from '../config/defaultPrompts';
 
 export default function ChatbotChat({ contractorId }) {
   const { data: session, status } = useSession();
@@ -51,13 +52,33 @@ export default function ChatbotChat({ contractorId }) {
     },
   });
 
+  const [prompts, setPrompts] = useState(defaultPrompts);
+
+  // Add effect to fetch contractor-specific prompts
+  useEffect(() => {
+    if (contractorId) {
+      const fetchContractorPrompts = async () => {
+        try {
+          const doc = await db.collection('contractors').doc(contractorId).get();
+          if (doc.exists && doc.data().prompts) {
+            setPrompts({ ...defaultPrompts, ...doc.data().prompts });
+          }
+        } catch (err) {
+          console.error('Error fetching contractor prompts:', err);
+        }
+      };
+      fetchContractorPrompts();
+    }
+  }, [contractorId]);
+
+  // Update message references to use prompts
   useEffect(() => {
     setMessages([{
       role: 'assistant',
-      content: `Hi! I'm here to help understand your project! Describe the issue, snap a photo, or go live.`,
-      suggestions: ['Plumbing', 'AC', 'Broken Appliance'],
+      content: prompts.welcome,
+      suggestions: prompts.suggestions,
     }]);
-  }, []);
+  }, [prompts]);
 
   const speak = useCallback((text) => {
     if (typeof window !== 'undefined') {
@@ -181,7 +202,7 @@ export default function ChatbotChat({ contractorId }) {
   const startLiveChat = async () => {
     setLive(true);
     setAutoCapture(true);
-    speak('OK, let\'s take a look!');
+    speak(prompts.liveAnalysis);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode },

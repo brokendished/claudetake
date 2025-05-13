@@ -28,9 +28,9 @@ export default function Home() {
                   Customer Login
                 </a>
               </Link>
-              <Link href="/contractor/login">
+              <Link href="/contractor/signup">
                 <a className="inline-block bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
-                  Contractor Login
+                  Contractor Signup
                 </a>
               </Link>
             </div>

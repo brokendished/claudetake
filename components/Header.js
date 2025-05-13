@@ -24,6 +24,9 @@ export default function Header() {
                 <Link href="/login">
                   <a className="text-gray-700 hover:text-gray-900">Customer Login</a>
                 </Link>
+                <Link href="/contractor/signup">
+                  <a className="text-gray-700 hover:text-gray-900">Contractor Signup</a>
+                </Link>
                 <Link href="/contractor/login">
                   <a className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
                     Contractor Login
@@ -32,12 +35,17 @@ export default function Header() {
               </>
             )}
             {session && (
-              <button
-                onClick={() => signOut()}
-                className="text-gray-700 hover:text-gray-900"
-              >
-                Sign Out
-              </button>
+              <>
+                <Link href={session.user?.role === 'contractor' ? '/contractor/dashboard' : '/dashboard'}>
+                  <a className="text-gray-700 hover:text-gray-900">Dashboard</a>
+                </Link>
+                <button
+                  onClick={() => signOut()}
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  Sign Out
+                </button>
+              </>
             )}
           </div>
         </div>
