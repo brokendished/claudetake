@@ -8,78 +8,44 @@ export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const handleCustomerLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    try {
-      await signIn('google', {
-        callbackUrl: '/dashboard',
-        redirect: false
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-    }
-  };
-
-  const handleContractorLogin = (e) => {
-    e.preventDefault();
-    signIn('credentials', {
-      callbackUrl: '/contractor/dashboard',
-      redirect: true
-    });
-  };
-
-  const handleContractorSignup = (e) => {
-    e.preventDefault();
-    router.push('/contractor/signup');
-  };
-
-  const handleDashboardClick = (e) => {
-    e.preventDefault();
-    const path = session?.user?.role === 'contractor' ? '/contractor/dashboard' : '/dashboard';
-    router.push(path);
+    signIn('google', { callbackUrl: '/dashboard' });
   };
 
   return (
     <header className="bg-white shadow-sm">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold">ClaudeTake</span>
-            </Link>
-          </div>
+          <Link href="/" className="flex-shrink-0 flex items-center">
+            <span className="text-xl font-bold">ClaudeTake</span>
+          </Link>
           
           <div className="flex items-center space-x-4">
             {!session && (
               <>
                 <button
-                  onClick={handleCustomerLogin}
+                  onClick={handleLogin}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Customer Login
                 </button>
-                <button
-                  onClick={handleContractorSignup}
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  Contractor Signup
-                </button>
-                <button
-                  onClick={handleContractorLogin}
+                <Link 
+                  href="/contractor/login"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
                   Contractor Login
-                </button>
+                </Link>
               </>
             )}
             {session && (
               <>
-                <button 
-                  onClick={handleDashboardClick}
+                <Link 
+                  href={session.user.role === 'contractor' ? '/contractor/dashboard' : '/dashboard'}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Dashboard
-                </button>
+                </Link>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
                   className="text-gray-700 hover:text-gray-900"

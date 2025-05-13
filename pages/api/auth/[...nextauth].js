@@ -8,14 +8,11 @@ export default NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          prompt: "select_account"
-        }
-      }
+      // Force account selection for clarity
+      authorization: { params: { prompt: "select_account" } }
     }),
     CredentialsProvider({
-      name: 'Email & Password',
+      name: 'Contractor Login',
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
@@ -25,7 +22,6 @@ export default NextAuth({
           if (!credentials?.email || !credentials?.password) {
             throw new Error('Email and password required');
           }
-          
           const user = await verifyPassword(credentials.email, credentials.password);
           if (user) {
             return {
@@ -45,18 +41,14 @@ export default NextAuth({
   ],
   pages: {
     signIn: '/login',
-    signOut: '/',
     error: '/auth/error'
   },
   callbacks: {
-    async signIn({ user, account }) {
-      console.log('SignIn callback:', { user, account });
-      return true;
-    },
     async jwt({ token, user, account }) {
       if (user) {
-        token.role = account?.provider === 'google' ? 'consumer' : 'contractor';
-        token.uid = user.id || user.sub;
+        // Set role based on provider
+        token.role = account?.provider === 'credentials' ? 'contractor' : 'consumer';
+        token.uid = user.id;
       }
       return token;
     },
@@ -66,18 +58,11 @@ export default NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
-      console.log('Redirect:', { url, baseUrl });
-      // For Google Auth (customer login)
-      if (url.includes('auth/signin') || url === baseUrl) {
-        return '/dashboard';
+      // Simplified redirect logic
+      if (url.startsWith('/contractor')) {
+        return `${baseUrl}/contractor/dashboard`;
       }
-      // For direct URLs
-      if (url.startsWith(baseUrl)) {
-        return url;
-      }
-      // Default fallback
-      return baseUrl;
+      return `${baseUrl}/dashboard`;
     }
-  },
-  debug: true // Enable debug messages
+  }
 });
