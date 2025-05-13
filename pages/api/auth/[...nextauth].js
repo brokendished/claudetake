@@ -50,29 +50,46 @@ export default NextAuth({
   },
   callbacks: {
     async signIn({ user, account }) {
-      return true; // Allow all sign-ins
+      if (account.provider === 'google') {
+        user.role = 'consumer';
+      }
+      // Debug log
+      console.log('SignIn callback:', { user, account });
+      return true;
     },
     async jwt({ token, user, account }) {
       if (user) {
-        token.role = user.role || 'consumer'; // Default to consumer if no role specified
+        token.role = account?.provider === 'credentials' ? 'contractor' : 'consumer';
         token.uid = user.id;
+        // Debug log
+        console.log('JWT callback:', { token, user, account });
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.role = token.role;
-        session.user.uid = token.uid;
-      }
+      session.user.role = token.role;
+      session.user.uid = token.uid;
+      // Debug log
+      console.log('Session callback:', { session, token });
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Handle contractor redirects
-      if (url.startsWith('/contractor')) {
+      // Debug log
+      console.log('Redirect callback:', { url, baseUrl });
+      
+      if (url.startsWith(baseUrl)) {
+        // Keep same-origin URLs as-is
         return url;
       }
-      // Redirect to dashboard by default
+      
+      // Default redirects based on role
+      if (url.includes('/contractor')) {
+        return `${baseUrl}/contractor/dashboard`;
+      }
+      
+      // Default to main dashboard
       return `${baseUrl}/dashboard`;
     }
-  }
+  },
+  debug: true // Enable debug messages
 });
