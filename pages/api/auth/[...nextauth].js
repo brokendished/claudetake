@@ -45,6 +45,7 @@ export default NextAuth({
   ],
   pages: {
     signIn: '/login',
+    signOut: '/',
     error: '/auth/error'
   },
   callbacks: {
@@ -64,6 +65,14 @@ export default NextAuth({
         session.user.uid = token.uid;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Handle contractor redirects
+      if (url.startsWith('/contractor')) {
+        return url;
+      }
+      // Redirect to dashboard by default
+      return `${baseUrl}/dashboard`;
     }
   }
 });

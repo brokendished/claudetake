@@ -2,9 +2,26 @@
 
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { useRouter } from 'next/router';
 
 export default function Header() {
   const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleCustomerLogin = (e) => {
+    e.preventDefault();
+    signIn('google', { callbackUrl: '/dashboard' });
+  };
+
+  const handleContractorLogin = (e) => {
+    e.preventDefault();
+    router.push('/contractor/login');
+  };
+
+  const handleContractorSignup = (e) => {
+    e.preventDefault();
+    router.push('/contractor/signup');
+  };
 
   return (
     <header className="bg-white shadow-sm">
@@ -19,24 +36,24 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {!session && (
               <>
-                <Link 
-                  href="/login"
+                <button
+                  onClick={handleCustomerLogin}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Customer Login
-                </Link>
-                <Link 
-                  href="/contractor/signup"
+                </button>
+                <button
+                  onClick={handleContractorSignup}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Contractor Signup
-                </Link>
-                <Link 
-                  href="/contractor/login"
+                </button>
+                <button
+                  onClick={handleContractorLogin}
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
                   Contractor Login
-                </Link>
+                </button>
               </>
             )}
             {session && (
@@ -48,7 +65,7 @@ export default function Header() {
                   Dashboard
                 </Link>
                 <button
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Sign Out
