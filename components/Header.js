@@ -2,16 +2,9 @@
 
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import { useRouter } from 'next/router';
 
 export default function Header() {
   const { data: session } = useSession();
-  const router = useRouter();
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    signIn('google', { callbackUrl: '/dashboard' });
-  };
 
   return (
     <header className="bg-white shadow-sm">
@@ -22,38 +15,35 @@ export default function Header() {
           </Link>
           
           <div className="flex items-center space-x-4">
-            {!session && (
-              <>
-                <button
-                  onClick={handleLogin}
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  Customer Login
-                </button>
-                <Link 
-                  href="/contractor/login"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Contractor Login
-                </Link>
-              </>
-            )}
-            {session && (
+            {!session ? (
+              <button
+                onClick={() => signIn('google')}
+                className="text-gray-700 hover:text-gray-900"
+              >
+                Sign In
+              </button>
+            ) : (
               <>
                 <Link 
-                  href={session.user.role === 'contractor' ? '/contractor/dashboard' : '/dashboard'}
+                  href="/dashboard"
                   className="text-gray-700 hover:text-gray-900"
                 >
-                  Dashboard
+                  My Quotes
                 </Link>
                 <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={() => signOut()}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Sign Out
                 </button>
               </>
             )}
+            <Link 
+              href="/contractor"
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              For Contractors
+            </Link>
           </div>
         </div>
       </nav>
