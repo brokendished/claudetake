@@ -10,12 +10,18 @@ export default function Header() {
 
   const handleCustomerLogin = (e) => {
     e.preventDefault();
-    signIn('google', { callbackUrl: '/dashboard' });
+    signIn('google', { 
+      callbackUrl: '/dashboard',
+      redirect: true
+    });
   };
 
   const handleContractorLogin = (e) => {
     e.preventDefault();
-    router.push('/contractor/login');
+    signIn('credentials', {
+      callbackUrl: '/contractor/dashboard',
+      redirect: true
+    });
   };
 
   const handleContractorSignup = (e) => {
