@@ -24,6 +24,12 @@ export default function ChatbotChat({ contractorId }) {
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Add loadingStates initialization
+  const [loadingStates, setLoadingStates] = useState({
+    analyzingImage: false,
+    savingQuote: false
+  });
+
   const sessionId = useRef(uuidv4());
   const quoteRef = useRef(null);
   const lastAskedRef = useRef('');
@@ -101,34 +107,50 @@ export default function ChatbotChat({ contractorId }) {
 
     try {
       setIsSaving(true);
+      setLoadingStates(prev => ({ ...prev, savingQuote: true }));
+      
+      console.log('Starting quote save process...'); // Debug log
+      
+      // Validate messages
+      if (!messages || messages.length === 0) {
+        throw new Error('No messages to save');
+      }
+
       const summary = await summarizeQuote(messages);
+      console.log('Summary generated:', summary); // Debug log
       
       const quoteData = {
         sessionId: sessionId.current,
         timestamp: serverTimestamp(),
         name: session.user?.name || '',
         email: session.user?.email || '',
-        images: imageURLs,
+        images: imageURLs || [],
         issue: summary,
         contractorId: contractorIdRef.current,
         status: 'pending',
-        userType: 'consumer', // Add user type
-        messages: messages, // Store full conversation
+        userType: 'consumer',
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          image: m.image || null
+        }))
       };
+
+      console.log('Quote data prepared:', quoteData); // Debug log
 
       const quotesRef = collection(db, 'quotes');
       const docRef = await addDoc(quotesRef, quoteData);
+      console.log('Quote saved with ID:', docRef.id); // Debug log
 
       quoteRef.current = docRef;
       setQuoteSaved(true);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Quote saved successfully! Redirecting to your quotes...'
+        content: 'Quote saved successfully! Redirecting to dashboard...'
       }]);
       
-      // Add delay before redirect
       setTimeout(() => {
-        router.push('/quotes'); // Changed to correct consumer quotes path
+        router.push('/dashboard');
       }, 2000);
       
     } catch (error) {
@@ -139,6 +161,7 @@ export default function ChatbotChat({ contractorId }) {
       }]);
     } finally {
       setIsSaving(false);
+      setLoadingStates(prev => ({ ...prev, savingQuote: false }));
     }
   };
 
